@@ -1,7 +1,7 @@
-import { buildEscPos, type PrintSection } from "./escpos.ts";
-import { sendToPrinter } from "./transport/tcp.ts";
-import { printViaBluetooth, listBluetoothPrinters } from "./transport/bluetooth.ts";
-import { printViaUsb, listUsbPrinters } from "./transport/usb.ts";
+import { buildEscPos, type PrintSection } from "./escpos.js";
+import { sendToPrinter } from "./transport/tcp.js";
+import { printViaBluetooth, listBluetoothPrinters } from "./transport/bluetooth.js";
+import { printViaUsb, listUsbPrinters } from "./transport/usb.js";
 
 export type { PrintSection };
 

@@ -1,24 +1,44 @@
 # universal-thermal-printer
 
-Print to thermal printers over **TCP**, **Bluetooth**, or **USB** — works in **Node.js** and **React Native**.
+[![npm version](https://img.shields.io/npm/v/universal-thermal-printer?color=blue)](https://www.npmjs.com/package/universal-thermal-printer)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
+
+Print to thermal printers over **TCP**, **Bluetooth**, or **USB** — works in **Node.js** and **Bun**.
 
 ## Install
 
 ```bash
-npm install /path/to/universal-thermal-printer
+npm install universal-thermal-printer
 ```
 
-### Optional packages
+### Requirements
 
-Only needed for the transport types you use:
+| Runtime | Version |
+|---------|---------|
+| Node.js | >= 18 (for `net` module) |
+| Bun     | >= 1.0  |
 
-| Transport | Package | Install |
-|-----------|---------|---------|
-| TCP  | *(built-in `net` module)* | Nothing to install |
-| Bluetooth | `bluetooth-serial-port` | `npm install bluetooth-serial-port` |
-| USB  | `serialport` | `npm install serialport` |
+### Dependencies
 
-Missing a transport? Calling its function throws a clear error telling you exactly which package to install.
+Only the transport packages you actually use are required — everything else is **optional**:
+
+| Dependency | Type | Required for | Install |
+|------------|------|-------------|---------|
+| `bluetooth-serial-port` | optional | Bluetooth printing | `npm install bluetooth-serial-port` |
+| `serialport` | optional | USB printing | `npm install serialport` |
+
+TCP printing uses Node's built-in `net` module — zero additional packages needed.
+
+> Calling a transport function without its optional package installed throws a clear error telling you exactly what to install.
+
+```bash
+# Example: install everything
+npm install universal-thermal-printer bluetooth-serial-port serialport
+
+# Example: TCP-only (zero extra deps)
+npm install universal-thermal-printer
+```
 
 ---
 
@@ -95,23 +115,23 @@ await print("usb", devices[0].deviceId, [
 
 ---
 
-## Running in Node.js (no React Native)
-
-TCP printing uses Node's built-in `net` module — zero dependencies needed.
+## CLI
 
 ```bash
-# Direct TS (Node 22.6+ / 25+)
-node --experimental-strip-types print.ts
+# Via npx
+npx thermal-print 192.168.1.87 9100
 
-# Or with Bun
-bun print.ts
+# Or globally
+npm install -g universal-thermal-printer
+thermal-print 192.168.1.87 9100
 ```
 
 The `print.ts` script at the project root sends a sample receipt to a network printer:
 
 ```bash
-node --experimental-strip-types print.ts          # default 192.168.1.87:9100
-node --experimental-strip-types print.ts 10.0.0.50 9100
+# Direct TS (Node 22.6+ / 25+)
+node --experimental-strip-types print.ts
+bun print.ts
 ```
 
 ---
@@ -163,9 +183,24 @@ Each section is `{ type, value? }`.
 ```
 src/
 ├── index.ts              # Exports: print, listBluetoothPrinters, listUsbPrinters
+├── cli.ts                # CLI entry point (`thermal-print`)
 ├── escpos.ts             # ESC/POS command builder
 └── transport/
     ├── tcp.ts            # Node.js built-in net module
     ├── bluetooth.ts      # bluetooth-serial-port (optional)
     └── usb.ts            # serialport (optional)
 ```
+
+## Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request.
+
+1. Fork the repo
+2. Create a feature branch (`git checkout -b feature/amazing`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing`)
+5. Open a Pull Request
+
+## License
+
+MIT &copy; 2026 Sandeep Kushwaha
