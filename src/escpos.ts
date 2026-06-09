@@ -143,8 +143,133 @@ export function buildEscPos(sections: PrintSection[]): Uint8Array {
         break;
       }
 
+      case "Table": {
+        const t = section.value || {};
+        const headers: string[] = t.header || [];
+        const rows: string[][] = t.rows || [];
+        const sep = t.separator === "none" ? "" : t.separator === "double" ? "=" : t.separator === "custom" ? (t.customSeparator || "-") : "-";
+        const headerBold = t.headerBold !== false;
+        const borderAll = t.borderAll === true;
+        const gap = t.gap ?? 1;
+
+        if (headers.length === 0 && rows.length === 0) break;
+
+        const colCount = Math.max(
+          headers.length,
+          ...rows.map((r: string[]) => r.length)
+        );
+        const colWidths: number[] = t.columnWidths
+          ? t.columnWidths.slice(0, colCount)
+          : Array(colCount).fill(0);
+
+        for (let c = 0; c < colCount; c++) {
+          if (!t.columnWidths) {
+            if (headers[c]) colWidths[c] = Math.max(colWidths[c], headers[c].length);
+            for (const row of rows) {
+              if (row[c]) colWidths[c] = Math.max(colWidths[c], row[c].length);
+            }
+            colWidths[c] = Math.max(colWidths[c], 3);
+          }
+        }
+
+        function padCell(text: string, width: number): string {
+          return (text ?? "").padEnd(width, " ");
+        }
+
+        const totalWidth = colWidths.reduce((a: number, b: number) => a + b + gap, 0) - gap;
+
+        function renderRow(cells: string[], isHeader: boolean): void {
+          if (borderAll && sep) {
+            const borderParts = colWidths.map((w: number) => sep.repeat(w));
+            parts.push(new Uint8Array([...borderParts.join(gap > 0 ? " ".repeat(gap) : "").split("").map((c: string) => c.charCodeAt(0)), 0x0a]));
+          }
+          const line = cells.map((cell, c) => padCell(cell, colWidths[c])).join(gap > 0 ? " ".repeat(gap) : "");
+          if (isHeader && headerBold) {
+            parts.push(new Uint8Array([0x1b, 0x45, 0x01]));
+          }
+          parts.push(new Uint8Array([...line.split("").map((c: string) => c.charCodeAt(0)), 0x0a]));
+          if (isHeader && headerBold) {
+            parts.push(new Uint8Array([0x1b, 0x45, 0x00]));
+          }
+          if (isHeader && sep) {
+            const borderParts = colWidths.map((w: number) => sep.repeat(w));
+            parts.push(new Uint8Array([...borderParts.join(gap > 0 ? " ".repeat(gap) : "").split("").map((c: string) => c.charCodeAt(0)), 0x0a]));
+          }
+        }
+
+        if (headers.length > 0) {
+          renderRow(headers, true);
+        }
+        for (const row of rows) {
+          const padded: string[] = Array(colCount).fill("");
+          for (let c = 0; c < colCount; c++) {
+            padded[c] = row[c] ?? "";
+          }
+          renderRow(padded, false);
+        }
+        if (borderAll && sep) {
+          const borderParts = colWidths.map((w: number) => sep.repeat(w));
+          parts.push(new Uint8Array([...borderParts.join(gap > 0 ? " ".repeat(gap) : "").split("").map((c: string) => c.charCodeAt(0)), 0x0a]));
+        }
+        break;
+      }
+
+      case "MultiColumn": {
+        const mc = section.value || {};
+        const cols: { text: string; width?: number; align?: string }[] = mc.columns || [];
+        const gap = mc.gap ?? 2;
+        const maxLines = cols.reduce((max: number, col: { text: string; width?: number; align?: string }) => {
+          const lines = (col.text || "").split("\n");
+          return Math.max(max, lines.length);
+        }, 0);
+
+        for (let lineIdx = 0; lineIdx < maxLines; lineIdx++) {
+          const lineParts = cols.map((col) => {
+            const lines = (col.text || "").split("\n");
+            const cell = lines[lineIdx] ?? "";
+            const w = col.width ?? 10;
+            if (col.align === "right") return cell.padStart(w);
+            if (col.align === "center") {
+              const left = Math.max(0, Math.floor((w - cell.length) / 2));
+              return " ".repeat(left) + cell + " ".repeat(w - cell.length - left);
+            }
+            return cell.padEnd(w);
+          });
+          const line = lineParts.join(" ".repeat(gap));
+          parts.push(new Uint8Array([...line.split("").map((c: string) => c.charCodeAt(0)), 0x0a]));
+        }
+        break;
+      }
+
+      case "Image": {
+        const img = section.value || {};
+        if (img.rasterData && img.bytesPerLine && img.height) {
+          const m = img.algorithm ?? 0;
+          const xL = img.bytesPerLine & 0xff;
+          const xH = (img.bytesPerLine >> 8) & 0xff;
+          const yL = img.height & 0xff;
+          const yH = (img.height >> 8) & 0xff;
+          parts.push(new Uint8Array([0x1d, 0x76, 0x30, m, xL, xH, yL, yH]));
+          const binary = Uint8Array.from(atob(img.rasterData), (c) => c.charCodeAt(0));
+          parts.push(binary);
+          parts.push(new Uint8Array([0x0a]));
+        }
+        break;
+      }
+
       case "CodePage":
         parts.push(new Uint8Array([0x1b, 0x74, section.value || 0]));
+        break;
+
+      case "LineHeight":
+        parts.push(new Uint8Array([0x1b, 0x33, Math.min(Math.max(section.value || 30, 0), 255)]));
+        break;
+
+      case "LetterSpacing":
+        break;
+
+      case "ResetStyle":
+        parts.push(new Uint8Array([0x1b, 0x40]));
         break;
     }
   }
