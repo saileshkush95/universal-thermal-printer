@@ -1,6 +1,6 @@
 {
   "name": "universal-thermal-printer",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "Print to thermal printers via TCP, Bluetooth, or USB — works in Node.js, Bun, and Expo",
   "license": "MIT",
