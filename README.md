@@ -29,9 +29,12 @@ Only the transport packages you actually use are required — everything else is
 | `expo-ble` | Expo | BLE Bluetooth | `npx expo install expo-ble` |
 | `react-native-tcp-socket` | Expo | TCP/Network | `npx expo install react-native-tcp-socket` |
 | `serialport` | Node.js | USB printing | `npm install serialport` |
+| — (built-in) | Expo (Android) | USB printing | Included in `universal-thermal-printer` |
 
 TCP printing on **Node.js/Bun** uses the built-in `net` module — zero additional packages needed.
 On **Expo**, TCP requires `react-native-tcp-socket` and a **development build** (not Expo Go).
+
+USB printing on **Expo (Android)** uses a built-in native module — no extra package needed, just add the config plugin (see below).
 
 > Calling a transport function without its optional package installed throws a clear error telling you exactly what to install.
 
@@ -62,10 +65,10 @@ Print sections to a thermal printer.
 | Arg | Type | Description |
 |-----|------|-------------|
 | `type` | `"network"` \| `"bluetooth"` \| `"usb"` | Transport type |
-| `address` | `string` | IP address, Bluetooth MAC, or USB device path |
+| `address` | `string` | IP address, Bluetooth MAC, or USB device path. On **Expo Android** use `"vendorId:productId"` (e.g. `"10473:528"`). |
 | `sections` | `PrintSection[]` | Array of print commands |
 | `options.port` | `number` (default `9100`) | TCP port (network only) |
-| `options.baudRate` | `number` (default `9600`) | Baud rate (USB only) |
+| `options.baudRate` | `number` (default `9600`) | Baud rate (Node.js USB via serialport only) |
 
 **Returns**: `Promise<string>` — success message.
 
@@ -141,7 +144,9 @@ await print("bluetooth", printers[0].address, [
 ]);
 ```
 
-### USB print (Node.js only)
+### USB print
+
+**Node.js / Bun** (via `serialport`):
 
 ```ts
 import { print, listUsbPrinters } from "universal-thermal-printer";
@@ -156,26 +161,36 @@ await print("usb", devices[0].deviceId, [
 ], { baudRate: 9600 });
 ```
 
+**Expo (Android)** (via built-in native module + config plugin):
+
+```ts
+import { print, listUsbPrinters } from "universal-thermal-printer";
+
+const devices = await listUsbPrinters();
+// [{ name: "USB Printer", deviceId: "10473:528" }]
+
+await print("usb", devices[0].deviceId, [
+  { type: "Init" },
+  { type: "Text", value: "Hello from Android USB!" },
+  { type: "Cut" },
+]);
+```
+
 ---
 
 ## Expo / React Native usage
 
 > **Expo Go vs dev build**: `react-native-tcp-socket` and `expo-ble` require a **development build** (`npx expo run:ios` / `npx expo run:android`). They do **not** work in Expo Go because both ship native modules.
 
-### Installation
+### Quick start from scratch
 
-```bash
-# Expo
-npx expo install universal-thermal-printer expo-ble react-native-tcp-socket
-
-# Bare React Native
-npm install universal-thermal-printer expo-ble react-native-tcp-socket
-cd ios && pod install
+```sh
+npx create-expo-app@latest my-print-app
+cd my-print-app
+npx expo install universal-thermal-printer react-native-tcp-socket expo-ble
 ```
 
-### Permissions
-
-Add BLE permissions to your `app.json` / `app.config.js` (Expo) or `Info.plist` and `AndroidManifest.xml` (bare RN):
+Configure `app.json` with plugins and permissions:
 
 ```json
 {
@@ -187,31 +202,83 @@ Add BLE permissions to your `app.json` / `app.config.js` (Expo) or `Info.plist` 
           "isBackgroundEnabled": true,
           "neverForLocation": true
         }
+      ],
+      "universal-thermal-printer/plugin/withUsbPrinter"
+    ],
+    "ios": {
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "Used to connect to thermal printers",
+        "NSBluetoothPeripheralUsageDescription": "Used to connect to thermal printers"
+      },
+      "bundleIdentifier": "com.example.myapp"
+    },
+    "android": {
+      "permissions": [
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.BLUETOOTH_CONNECT"
       ]
-    ]
+    }
   }
 }
 ```
 
-For TCP on iOS, add `NSAppTransportSecurity` in `Info.plist` to allow local network connections if your printer is on a local IP.
+Build and run:
+
+```sh
+npx expo run:ios      # iOS development build
+# or
+npx expo run:android  # Android development build (USB requires Android)
+```
+
+### Bare React Native
+
+```bash
+npm install universal-thermal-printer expo-ble react-native-tcp-socket
+cd ios && pod install
+```
+
+Add the same permissions above to `Info.plist` (iOS) and `AndroidManifest.xml` (Android).
 
 ### Example
 
 ```tsx
-import { useEffect, useState } from "react";
-import { Button, View } from "react-native";
+import { useState } from "react";
+import { Button, View, TextInput } from "react-native";
 import { print, listBluetoothPrinters } from "universal-thermal-printer";
 
 export default function PrintScreen() {
+  const [ip, setIp] = useState("192.168.1.87");
   const [printers, setPrinters] =
     useState<{ name: string; address: string }[]>([]);
 
-  useEffect(() => {
-    listBluetoothPrinters().then(setPrinters);
-  }, []);
-
   return (
     <View>
+      <TextInput value={ip} onChangeText={setIp} placeholder="Printer IP" />
+      <Button
+        title="Print via Network"
+        onPress={() =>
+          print("network", ip, [
+            { type: "Init" },
+            { type: "Bold", value: true },
+            { type: "Align", value: "center" },
+            { type: "Text", value: "Hello from Expo!" },
+            { type: "Bold", value: false },
+            { type: "Feed", value: 3 },
+            { type: "Cut" },
+          ])
+        }
+      />
+
+      <Button
+        title="Scan Bluetooth Printers"
+        onPress={async () => {
+          const list = await listBluetoothPrinters();
+          setPrinters(list);
+        }}
+      />
+
       {printers.map((p) => (
         <Button
           key={p.address}
@@ -219,7 +286,7 @@ export default function PrintScreen() {
           onPress={() =>
             print("bluetooth", p.address, [
               { type: "Init" },
-              { type: "Text", value: "Hello from Expo!" },
+              { type: "Text", value: "Hello via Bluetooth!" },
               { type: "Cut" },
             ])
           }
@@ -238,15 +305,16 @@ The package automatically detects the runtime and uses the right transport:
 |---------|-----|-----------|-----|
 | Node.js | `net` (built-in) | `bluetooth-serial-port` | `serialport` |
 | Bun | `net` (built-in) | `bluetooth-serial-port` | `serialport` |
-| Expo | `react-native-tcp-socket` | `expo-ble` | ❌ |
+| Expo (Android) | `react-native-tcp-socket` | `expo-ble` | Built-in native module |
+| Expo (iOS) | `react-native-tcp-socket` | `expo-ble` | ❌ |
 
 No configuration needed — just `npm install` the optional packages you need.
 
 ### What doesn't work on Expo
 
-| Transport | Reason |
-|-----------|--------|
-| USB | No USB host API on iOS/Android |
+| Transport | Platform | Reason |
+|-----------|----------|--------|
+| USB | iOS | No USB host API on iOS |
 
 ## CLI
 

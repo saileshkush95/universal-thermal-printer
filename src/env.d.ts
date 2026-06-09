@@ -54,6 +54,24 @@ declare module "react-native-tcp-socket" {
   export function createServer(...args: any[]): any;
 }
 
+// UniversalThermalUsb native module (Android only)
+declare module "react-native" {
+  interface NativeModulesStatic {
+    UniversalThermalUsb: {
+      listDevices(): Promise<{
+        deviceId: string;
+        name: string;
+        vendorId: number;
+        productId: number;
+      }[]>;
+      requestPermission(vendorId: number, productId: number): Promise<boolean>;
+      connect(vendorId: number, productId: number): Promise<boolean>;
+      write(base64Data: string): Promise<number>;
+      disconnect(): Promise<boolean>;
+    };
+  }
+}
+
 // Bun global
 declare var Bun: {
   version: string;

@@ -1,6 +1,6 @@
 {
   "name": "universal-thermal-printer",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "type": "module",
   "description": "Print to thermal printers via TCP, Bluetooth, or USB — works in Node.js, Bun, and Expo",
   "license": "MIT",
@@ -29,6 +29,9 @@
   "files": [
     "dist",
     "src",
+    "android",
+    "plugin",
+    "react-native.config.js",
     "LICENSE",
     "README.md"
   ],
@@ -44,7 +47,13 @@
       "react-native": "./dist/index.rn.js",
       "import": "./dist/index.js"
     },
+    "./plugin/withUsbPrinter": "./plugin/withUsbPrinter.js",
     "./package.json": "./package.json"
+  },
+  "expo": {
+    "autolinking": {
+      "nativeModules": ["universal-thermal-printer"]
+    }
   },
   "scripts": {
     "build": "tsc",

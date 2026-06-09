@@ -27,8 +27,13 @@ export async function print(
       }
       return await printViaBluetooth(address, data);
     }
-    case "usb":
-      throw new Error("USB printing is not available on React Native");
+    case "usb": {
+      const usb = await import("./transport/usb-expo.js");
+      if (arguments.length === 1 && typeof address === "undefined") {
+        return usb.listUsbPrinters() as any;
+      }
+      return await usb.printViaUsb(address, data);
+    }
   }
 }
 
@@ -79,5 +84,10 @@ export async function listBluetoothPrinters(): Promise<{ name: string; address: 
 }
 
 export async function listUsbPrinters(): Promise<{ name: string; deviceId: string }[]> {
-  throw new Error("USB printing is not available on React Native");
+  const usb = await import("./transport/usb-expo.js");
+  const devices = await usb.listUsbPrinters();
+  return devices.map((d) => ({
+    name: d.name,
+    deviceId: `${d.vendorId}:${d.productId}`,
+  }));
 }
