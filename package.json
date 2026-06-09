@@ -1,0 +1,9 @@
+{
+  "name": "universal-thermal-printer",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Print to thermal printers via TCP, Bluetooth, or USB",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "files": ["src"]
+}
