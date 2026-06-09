@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { print } from "./src/index.ts";
 
-const type = process.argv[2] || "network";
-const address = process.argv[3] || "192.168.1.87";
+const type = process.argv[2] || "spooler";
+const address = process.argv[3] || "POS80 Printer";
 const port = parseInt(process.argv[4], 10) || 9100;
 
 print(type, address, [
