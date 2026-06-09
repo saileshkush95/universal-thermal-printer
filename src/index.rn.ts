@@ -6,6 +6,10 @@ export type { PrintSection };
 export interface PrintOptions {
   port?: number;
   baudRate?: number;
+  format?: "thermal" | "a4";
+  pageSize?: "A4" | "Letter";
+  margins?: number;
+  title?: string;
 }
 
 export async function print(
@@ -14,7 +18,10 @@ export async function print(
   sections: PrintSection[],
   options?: PrintOptions
 ): Promise<string> {
-  const data = buildEscPos(sections);
+  const format = options?.format ?? "thermal";
+  const data = format === "a4"
+    ? await importPdfBuilder(sections, options)
+    : buildEscPos(sections);
   switch (type) {
     case "network": {
       const { sendToPrinter } = await importNetworkTcp();
@@ -90,4 +97,16 @@ export async function listUsbPrinters(): Promise<{ name: string; deviceId: strin
     name: d.name,
     deviceId: `${d.vendorId}:${d.productId}`,
   }));
+}
+
+async function importPdfBuilder(
+  sections: PrintSection[],
+  options?: PrintOptions
+): Promise<Uint8Array> {
+  const { buildPdf } = await import("./pdf.js");
+  return await buildPdf(sections, {
+    pageSize: options?.pageSize,
+    margins: options?.margins,
+    title: options?.title,
+  });
 }

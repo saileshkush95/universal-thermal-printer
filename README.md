@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 
-Print to thermal printers over **TCP**, **Bluetooth**, or **USB** — works in **Node.js**, **Bun**, **Electron**, and **Expo**.
+Print to thermal (ESC/POS) and A4 (PDF) printers over **TCP**, **Bluetooth**, **USB**, or **system spooler** — works in **Node.js**, **Bun**, **Electron**, and **Expo**.
 
 ## Install
 
@@ -30,6 +30,7 @@ Only the transport packages you actually use are required — everything else is
 | `expo-ble` | Expo | BLE Bluetooth | `npx expo install expo-ble` |
 | `react-native-tcp-socket` | Expo | TCP/Network | `npx expo install react-native-tcp-socket` |
 | `serialport` | Node.js | USB printing | `npm install serialport` |
+| `pdf-lib` | Node.js / Bun / Expo | A4/PDF printing | `npm install pdf-lib` |
 | — (built-in) | Expo (Android) | USB printing | Included in `universal-thermal-printer` |
 
 TCP printing on **Node.js/Bun** uses the built-in `net` module — zero additional packages needed.
@@ -70,6 +71,10 @@ Print sections to a thermal printer.
 | `sections` | `PrintSection[]` | Array of print commands |
 | `options.port` | `number` (default `9100`) | TCP port (network only) |
 | `options.baudRate` | `number` (default `9600`) | Baud rate (Node.js USB via serialport only) |
+| `options.format` | `"thermal"` \| `"a4"` (default `"thermal"`) | Output format — ESC/POS or PDF |
+| `options.pageSize` | `"A4"` \| `"Letter"` (default `"A4"`) | Page size (A4 format only) |
+| `options.margins` | `number` (default `40`) | Page margins in points (A4 format only) |
+| `options.title` | `string` | Optional centered title at top (A4 format only) |
 
 **Returns**: `Promise<string>` — success message.
 
@@ -175,6 +180,37 @@ await print("usb", devices[0].deviceId, [
   { type: "Text", value: "Hello from Android USB!" },
   { type: "Cut" },
 ]);
+```
+
+### A4 / PDF print
+
+```ts
+import { print } from "universal-thermal-printer";
+
+await print("spooler", "My Printer Name", [
+  { type: "Init" },
+  { type: "Align", value: "center" },
+  { type: "Bold", value: true },
+  { type: "Size", value: { width: 3, height: 3 } },
+  { type: "Text", value: "INVOICE" },
+  { type: "Bold", value: false },
+  { type: "Size", value: { width: 1, height: 1 } },
+  { type: "Line", value: "-" },
+  { type: "Text", value: "Item 1 ................ $10.00" },
+  { type: "Text", value: "Item 2 ................ $20.00" },
+  { type: "Text", value: "Total: $30.00" },
+  { type: "Feed", value: 3 },
+], {
+  format: "a4",
+  title: "My Store",
+  pageSize: "A4",
+});
+
+// Or send A4 PDF to a network printer via TCP
+await print("network", "192.168.1.100", sections, {
+  format: "a4",
+  title: "Invoice",
+});
 ```
 
 ---
@@ -366,28 +402,28 @@ bun print.ts
 
 Each section is `{ type, value? }`.
 
-| type | value | Description |
-|------|-------|-------------|
-| `Init` | — | Reset printer to defaults |
-| `Text` | `string` | Print text with newline |
-| `Align` | `"left"` \| `"center"` \| `"right"` | Alignment |
-| `Size` | `{ width: 1-8, height: 1-8 }` | Text size (1x to 8x) |
-| `Bold` | `boolean` | Bold on/off |
-| `Underline` | `boolean` | Underline on/off |
-| `Italic` | `boolean` | Italic on/off |
-| `Invert` | `boolean` | Reverse printing |
-| `Font` | `"A"` \| `"B"` \| `"C"` | Font face |
-| `Rotate` | `boolean` | 90° rotation |
-| `UpsideDown` | `boolean` | 180° flip |
-| `Feed` | `number` (1-255) | Feed n lines |
-| `FeedDots` | `number` (1-255) | Feed n dots |
-| `Cut` | `"full"` \| `"partial"` | Paper cut |
-| `Line` | `string` | Horizontal line (default `=`) |
-| `Drawer` | `2` \| `5` | Open cash drawer |
-| `Beep` | `{ times, duration }` | Buzzer (1-9 each) |
-| `CodePage` | `number` (0-255) | Character page |
-| `Barcode` | `{ data, barcode_type?, height?, width? }` | 1D barcode |
-| `Qr` | `{ data, size?, error_correction? }` | QR code |
+| type | value | Thermal | A4/PDF |
+|------|-------|---------|--------|
+| `Init` | — | Reset printer | Ignored |
+| `Text` | `string` | Print text with newline | PDF text (auto-wrapped) |
+| `Align` | `"left"` \| `"center"` \| `"right"` | Alignment | ✓ |
+| `Size` | `{ width: 1-8, height: 1-8 }` | Text size multiplier | Font size scaled by `max(w,h)` |
+| `Bold` | `boolean` | Bold on/off | ✓ |
+| `Underline` | `boolean` | Underline on/off | Ignored |
+| `Italic` | `boolean` | Italic on/off | Ignored |
+| `Invert` | `boolean` | Reverse printing | Ignored |
+| `Font` | `"A"` \| `"B"` \| `"C"` | Font face | Ignored (uses Helvetica) |
+| `Rotate` | `boolean` | 90° rotation | Ignored |
+| `UpsideDown` | `boolean` | 180° flip | Ignored |
+| `Feed` | `number` (1-255) | Feed n lines | Adds spacing |
+| `FeedDots` | `number` (1-255) | Feed n dots | Adds spacing (dots→points) |
+| `Cut` | `"full"` \| `"partial"` | Paper cut | Ignored |
+| `Line` | `string` | Horizontal line | PDF horizontal rule |
+| `Drawer` | `2` \| `5` | Open cash drawer | Ignored |
+| `Beep` | `{ times, duration }` | Buzzer | Ignored |
+| `CodePage` | `number` (0-255) | Character page | Ignored (UTF-8) |
+| `Barcode` | `{ data, barcode_type?, height?, width? }` | 1D barcode | Ignored |
+| `Qr` | `{ data, size?, error_correction? }` | QR code | Ignored |
 
 ### Barcode types
 

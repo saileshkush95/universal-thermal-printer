@@ -1,8 +1,8 @@
 {
   "name": "universal-thermal-printer",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "type": "module",
-  "description": "Print to thermal printers via TCP, Bluetooth, or USB — works in Node.js, Bun, and Expo",
+  "description": "Print to thermal (ESC/POS) and A4 (PDF) printers via TCP, Bluetooth, USB, or system spooler — works in Node.js, Bun, Electron, and Expo",
   "license": "MIT",
   "author": "Sandeep Kushwaha",
   "repository": {
@@ -15,6 +15,9 @@
   "homepage": "https://github.com/saileshkush95/universal-thermal-printer#readme",
   "keywords": [
     "thermal-printer",
+    "a4",
+    "pdf",
+    "invoice",
     "escpos",
     "pos",
     "receipt",
@@ -52,7 +55,9 @@
   },
   "expo": {
     "autolinking": {
-      "nativeModules": ["universal-thermal-printer"]
+      "nativeModules": [
+        "universal-thermal-printer"
+      ]
     }
   },
   "scripts": {
@@ -70,6 +75,7 @@
   "peerDependencies": {
     "bluetooth-serial-port": "^3.0.2",
     "expo-ble": "*",
+    "pdf-lib": "^1.17.1",
     "react-native-tcp-socket": "^6.0.0 || ^7.0.0",
     "serialport": "^12.0.0 || ^13.0.0"
   },
@@ -78,6 +84,9 @@
       "optional": true
     },
     "expo-ble": {
+      "optional": true
+    },
+    "pdf-lib": {
       "optional": true
     },
     "react-native-tcp-socket": {
@@ -89,6 +98,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.9.2",
+    "pdf-lib": "^1.17.1",
     "typescript": "^6.0.3"
   }
 }
