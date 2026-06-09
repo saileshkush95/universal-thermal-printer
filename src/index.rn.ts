@@ -57,25 +57,15 @@ async function importNetworkTcp() {
               const payload = typeof Buffer !== "undefined"
                 ? Buffer.from(data)
                 : Array.from(data, (b: number) => String.fromCharCode(b)).join("");
-              client.write(payload, () => {
-                client.end();
-                resolve(`Print job sent successfully to ${ip}:${port}`);
-              });
+              const flushed = client.write(payload);
+              client.destroy();
+              resolve(`Print job sent successfully to ${ip}:${port}`);
             }
           );
-          let settled = false;
           client.on("error", (err: Error) => {
-            if (settled) return;
-            settled = true;
             client.destroy();
             reject(`Failed to send data: ${err.message}`);
           });
-          setTimeout(() => {
-            if (settled) return;
-            settled = true;
-            client.destroy();
-            reject("Timeout: printer did not acknowledge data");
-          }, 15000);
         });
       },
     };
