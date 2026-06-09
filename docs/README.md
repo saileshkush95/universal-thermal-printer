@@ -1,7 +1,7 @@
 # universal-thermal-printer
 
-Cross-platform thermal printer library for Node.js, Bun, and React Native (Expo).  
-Supports **Network (TCP)**, **Bluetooth (SPP + BLE)**, **USB (serial + system spooler)**, and **OS print spooler** transports.
+Cross-platform thermal (ESC/POS) and A4 (PDF) printer library for Node.js, Bun, and React Native (Expo).  
+Supports **Network (TCP)**, **Bluetooth (SPP + BLE)**, **USB (serial + system spooler)**, **OS print spooler**, and **A4/PDF** output.
 
 ## Features
 
@@ -22,6 +22,7 @@ Supports **Network (TCP)**, **Bluetooth (SPP + BLE)**, **USB (serial + system sp
 - [Bluetooth](bluetooth.md) — Print via Bluetooth SPP or BLE
 - [USB](usb.md) — Print via USB serial or system printer
 - [Spooler](spooler.md) — Print via OS print spooler (Windows/CUPS)
+- [A4 / PDF](a4.md) — Print invoices and documents on A4/Letter
 - [ESC/POS Reference](escpos.md) — All supported print sections and commands
 - [CLI](cli.md) — Command-line interface
 - [React Native / Expo](expo.md) — Mobile printing setup

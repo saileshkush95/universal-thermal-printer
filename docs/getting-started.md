@@ -76,6 +76,13 @@ await print("usb", "COM3", receipt);
 
 // Print via system spooler
 await print("spooler", "POS80 Printer", receipt);
+
+// Print same content as A4 PDF via network
+await print("network", "192.168.1.100", receipt, {
+  format: "a4",
+  title: "My Store",
+  pageSize: "A4",
+});
 ```
 
 ## Demo Script

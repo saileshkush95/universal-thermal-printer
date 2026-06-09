@@ -34,6 +34,7 @@
     "src",
     "android",
     "plugin",
+    "docs",
     "react-native.config.js",
     "LICENSE",
     "README.md"
