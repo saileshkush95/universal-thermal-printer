@@ -1,6 +1,16 @@
+import { runtime } from "./detect.js";
+
 export async function listUsbPrinters(): Promise<
   { name: string; deviceId: string }[]
 > {
+  const rt = runtime();
+
+  if (rt === "expo") {
+    throw new Error(
+      "USB printing is not available on Expo/React Native"
+    );
+  }
+
   try {
     const { SerialPort } = await import("serialport");
     const ports = await SerialPort.list();
@@ -22,6 +32,14 @@ export async function printViaUsb(
   data: Uint8Array,
   baudRate: number = 9600
 ): Promise<string> {
+  const rt = runtime();
+
+  if (rt === "expo") {
+    throw new Error(
+      "USB printing is not available on Expo/React Native"
+    );
+  }
+
   let SerialPort: any;
   try {
     SerialPort = (await import("serialport")).SerialPort;

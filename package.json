@@ -2,7 +2,7 @@
   "name": "universal-thermal-printer",
   "version": "0.1.0",
   "type": "module",
-  "description": "Print to thermal printers via TCP, Bluetooth, or USB — works in Node.js and Bun",
+  "description": "Print to thermal printers via TCP, Bluetooth, or USB — works in Node.js, Bun, and Expo",
   "license": "MIT",
   "author": "Sandeep Kushwaha",
   "repository": {
@@ -22,7 +22,9 @@
     "bluetooth",
     "usb",
     "tcp",
-    "network"
+    "network",
+    "expo",
+    "react-native"
   ],
   "files": [
     "dist",
@@ -53,25 +55,29 @@
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
-    "bluetooth-serial-port": "^3.0.2"
+  "dependencies": {},
+  "peerDependencies": {
+    "bluetooth-serial-port": "^3.0.2",
+    "expo-ble": "*",
+    "react-native-tcp-socket": "^6.0.0 || ^7.0.0",
+    "serialport": "^12.0.0 || ^13.0.0"
+  },
+  "peerDependenciesMeta": {
+    "bluetooth-serial-port": {
+      "optional": true
+    },
+    "expo-ble": {
+      "optional": true
+    },
+    "react-native-tcp-socket": {
+      "optional": true
+    },
+    "serialport": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^25.9.2",
     "typescript": "^6.0.3"
-  },
-  "peerDependencies": {
-    "serialport": "^12.0.0 || ^13.0.0"
-  },
-  "peerDependenciesMeta": {
-    "serialport": {
-      "optional": true
-    },
-    "bluetooth-serial-port": {
-      "optional": true
-    }
-  },
-  "optionalDependencies": {
-    "serialport": "^12.0.0"
   }
 }

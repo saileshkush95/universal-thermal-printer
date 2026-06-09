@@ -1,6 +1,15 @@
+import { runtime } from "./detect.js";
+
 export async function listBluetoothPrinters(): Promise<
   { name: string; address: string }[]
 > {
+  const rt = runtime();
+
+  if (rt === "expo") {
+    const expo = await import("./bluetooth-expo.js");
+    return expo.listBluetoothPrinters();
+  }
+
   try {
     const mod = await import("bluetooth-serial-port");
     return new Promise((resolve) => {
@@ -29,6 +38,13 @@ export async function printViaBluetooth(
   address: string,
   data: Uint8Array
 ): Promise<string> {
+  const rt = runtime();
+
+  if (rt === "expo") {
+    const expo = await import("./bluetooth-expo.js");
+    return expo.printViaBluetooth(address, data);
+  }
+
   let mod: any;
   try {
     mod = await import("bluetooth-serial-port");

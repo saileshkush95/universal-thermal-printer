@@ -1,10 +1,31 @@
-import * as net from "net";
+import { runtime } from "./detect.js";
 
 export async function sendToPrinter(
   ip: string,
   port: number,
   data: Uint8Array
 ): Promise<string> {
+  const rt = runtime();
+
+  if (rt === "expo") {
+    const { TcpSocket } = await import("react-native-tcp-socket");
+    return new Promise((resolve, reject) => {
+      const client = TcpSocket.createConnection(
+        { host: ip, port, timeout: 5000 },
+        () => {
+          client.write(Buffer.from(data as any));
+          client.destroy();
+          resolve("Print job sent successfully");
+        }
+      );
+      client.on("error", (err: Error) => {
+        client.destroy();
+        reject(`Failed to send data: ${err.message}`);
+      });
+    });
+  }
+
+  const net = await import("net");
   return new Promise((resolve, reject) => {
     const socket = new net.Socket();
     socket.setTimeout(5000);
