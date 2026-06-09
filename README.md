@@ -31,7 +31,7 @@ Only the transport packages you actually use are required — everything else is
 | `serialport` | Node.js | USB printing | `npm install serialport` |
 
 TCP printing on **Node.js/Bun** uses the built-in `net` module — zero additional packages needed.
-On **Expo**, TCP requires `react-native-tcp-socket`.
+On **Expo**, TCP requires `react-native-tcp-socket` and a **development build** (not Expo Go).
 
 > Calling a transport function without its optional package installed throws a clear error telling you exactly what to install.
 
@@ -42,7 +42,7 @@ npm install universal-thermal-printer
 # Node.js: all transports
 npm install universal-thermal-printer bluetooth-serial-port serialport
 
-# Expo: all transports
+# Expo: all transports (requires dev build)
 npx expo install universal-thermal-printer expo-ble react-native-tcp-socket
 ```
 
@@ -57,6 +57,8 @@ import type { PrintSection } from "universal-thermal-printer";
 
 ### `print(type, address, sections, options?)`
 
+Print sections to a thermal printer.
+
 | Arg | Type | Description |
 |-----|------|-------------|
 | `type` | `"network"` \| `"bluetooth"` \| `"usb"` | Transport type |
@@ -65,8 +67,43 @@ import type { PrintSection } from "universal-thermal-printer";
 | `options.port` | `number` (default `9100`) | TCP port (network only) |
 | `options.baudRate` | `number` (default `9600`) | Baud rate (USB only) |
 
-### `listBluetoothPrinters()` — list paired Bluetooth printers
-### `listUsbPrinters()` — list connected USB devices
+**Returns**: `Promise<string>` — success message.
+
+**Throws** when the transport package is not installed or connection fails.
+
+---
+
+### `listBluetoothPrinters()`
+
+List paired/available Bluetooth printers.
+
+```ts
+async function listBluetoothPrinters(): Promise<{ name: string; address: string }[]>
+```
+
+| Runtime | Backend | Behavior |
+|---------|---------|----------|
+| Node.js / Bun | `bluetooth-serial-port` | Lists paired SPP devices |
+| Expo | `expo-ble` | Scans for BLE peripherals |
+
+**Throws** if the optional dependency is not installed.
+
+---
+
+### `listUsbPrinters()`
+
+List connected USB printer devices.
+
+```ts
+async function listUsbPrinters(): Promise<{ name: string; deviceId: string }[]>
+```
+
+| Runtime | Backend | Behavior |
+|---------|---------|----------|
+| Node.js / Bun | `serialport` | Lists USB serial devices |
+| Expo | — | Always throws (USB not available on mobile) |
+
+**Throws** on Expo with: `"USB printing is not available on React Native"`.
 
 ---
 
@@ -123,6 +160,8 @@ await print("usb", devices[0].deviceId, [
 
 ## Expo / React Native usage
 
+> **Expo Go vs dev build**: `react-native-tcp-socket` and `expo-ble` require a **development build** (`npx expo run:ios` / `npx expo run:android`). They do **not** work in Expo Go because both ship native modules.
+
 ### Installation
 
 ```bash
@@ -154,7 +193,7 @@ Add BLE permissions to your `app.json` / `app.config.js` (Expo) or `Info.plist` 
 }
 ```
 
-For TCP on iOS, add `NSAppTransportSecurity` or use Bonjour if on local network.
+For TCP on iOS, add `NSAppTransportSecurity` in `Info.plist` to allow local network connections if your printer is on a local IP.
 
 ### Example
 
@@ -208,7 +247,6 @@ No configuration needed — just `npm install` the optional packages you need.
 | Transport | Reason |
 |-----------|--------|
 | USB | No USB host API on iOS/Android |
-| TCP (network) | Requires `react-native-tcp-socket` — **not** an Expo package, but widely used |
 
 ## CLI
 

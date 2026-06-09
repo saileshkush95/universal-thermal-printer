@@ -12,9 +12,10 @@ export async function listUsbPrinters(): Promise<
   }
 
   try {
-    const { SerialPort } = await import("serialport");
+    const modName = "serial" + "port";
+    const { SerialPort } = await import(modName);
     const ports = await SerialPort.list();
-    return ports.map((p) => ({
+    return ports.map((p: any) => ({
       name: p.manufacturer
         ? `${p.manufacturer} ${p.productId || ""}`.trim()
         : p.path,
@@ -42,7 +43,8 @@ export async function printViaUsb(
 
   let SerialPort: any;
   try {
-    SerialPort = (await import("serialport")).SerialPort;
+    const modName = "serial" + "port";
+    SerialPort = (await import(modName)).SerialPort;
   } catch {
     throw new Error(
       "USB printing requires 'serialport'. Run: npm install serialport"

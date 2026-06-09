@@ -11,7 +11,8 @@ export async function listBluetoothPrinters(): Promise<
   }
 
   try {
-    const mod = await import("bluetooth-serial-port");
+    const modName = "bluetooth" + "-serial-port";
+    const mod = await import(modName);
     return new Promise((resolve) => {
       const bt = new mod.default();
       bt.listPairedDevices((err: any, devices: any[]) => {
@@ -47,7 +48,8 @@ export async function printViaBluetooth(
 
   let mod: any;
   try {
-    mod = await import("bluetooth-serial-port");
+    const modName = "bluetooth" + "-serial-port";
+    mod = await import(modName);
   } catch {
     throw new Error(
       "Bluetooth requires 'bluetooth-serial-port'. Run: npm install bluetooth-serial-port"

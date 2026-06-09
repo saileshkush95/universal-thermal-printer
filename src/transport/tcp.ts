@@ -1,5 +1,9 @@
 import { runtime } from "./detect.js";
 
+function moduleName(name: string): string {
+  return name;
+}
+
 export async function sendToPrinter(
   ip: string,
   port: number,
@@ -8,12 +12,15 @@ export async function sendToPrinter(
   const rt = runtime();
 
   if (rt === "expo") {
-    const { TcpSocket } = await import("react-native-tcp-socket");
+    const { TcpSocket } = await import(moduleName("react-native-tcp-socket"));
     return new Promise((resolve, reject) => {
       const client = TcpSocket.createConnection(
         { host: ip, port, timeout: 5000 },
         () => {
-          client.write(Buffer.from(data as any));
+          const payload = typeof Buffer !== "undefined"
+            ? Buffer.from(data)
+            : (data as any);
+          client.write(payload);
           client.destroy();
           resolve("Print job sent successfully");
         }
@@ -25,7 +32,7 @@ export async function sendToPrinter(
     });
   }
 
-  const net = await import("net");
+  const net: any = await import(moduleName("net"));
   return new Promise((resolve, reject) => {
     const socket = new net.Socket();
     socket.setTimeout(5000);

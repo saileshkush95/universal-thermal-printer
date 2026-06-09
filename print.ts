@@ -26,7 +26,7 @@ print(type, address, [
   { type: "Qr", value: { data: "ORDER-12345", size: 6, error_correction: "M" } },
   { type: "Feed", value: 2 },
   { type: "Text", value: "Thank you!" },
-  { type: "Feed", value: 3 },
+  { type: "Feed", value: 5 },
   { type: "Cut" },
 ], { port }).then((r) => console.log(r)).catch((e) => console.error(e));
 

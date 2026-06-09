@@ -40,17 +40,18 @@ declare module "expo-ble" {
 }
 
 declare module "react-native-tcp-socket" {
-  class TcpSocket {
-    static createConnection(
-      options: { host: string; port: number; timeout?: number },
-      callback: () => void
-    ): TcpSocket;
+  interface TcpSocket {
     write(buffer: Buffer): void;
     destroy(): void;
     on(event: string, callback: (...args: any[]) => void): void;
   }
 
-  export { TcpSocket };
+  export function createConnection(
+    options: { host: string; port: number; timeout?: number },
+    callback: () => void
+  ): TcpSocket;
+
+  export function createServer(...args: any[]): any;
 }
 
 // Bun global
