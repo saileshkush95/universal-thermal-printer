@@ -10,33 +10,45 @@ declare module "bluetooth-serial-port" {
   export default BluetoothSerialPort;
 }
 
-declare module "expo-ble" {
-  interface BleCharacteristic {
-    uuid: string;
-    serviceUuid: string;
-    write(data: ArrayBuffer | number[], withoutResponse: boolean): Promise<void>;
-  }
-
-  interface BleService {
-    uuid: string;
-    discoverCharacteristic(uuid: string): Promise<BleCharacteristic>;
-  }
-
-  interface BleDevice {
+declare module "react-native-ble-plx" {
+  interface Device {
     id: string;
     name: string | null;
-    rssi?: number;
-    discoverService(uuid: string): Promise<BleService>;
+    isConnected: boolean;
+    connect(): Promise<Device>;
+    disconnect(): Promise<void>;
+    discoverAllServicesAndCharacteristics(): Promise<Device>;
+    writeCharacteristicWithoutResponseForService(
+      serviceUUID: string,
+      characteristicUUID: string,
+      valueBase64: string
+    ): Promise<Characteristic>;
+    writeCharacteristicWithResponseForService(
+      serviceUUID: string,
+      characteristicUUID: string,
+      valueBase64: string
+    ): Promise<Characteristic>;
+  }
+
+  interface Characteristic {
+    uuid: string;
+    serviceUUID: string;
+    value: string | null;
   }
 
   class BleManager {
     constructor();
-    scan(serviceUuids: string[]): Promise<BleDevice[]>;
-    connect(deviceId: string): Promise<BleDevice>;
-    disconnect(deviceId: string): Promise<void>;
+    startDeviceScan(
+      serviceUUIDs: string[] | null,
+      options: { allowDuplicates?: boolean } | null,
+      listener: (error: { message: string } | null, device: Device | null) => void
+    ): void;
+    stopDeviceScan(): void;
+    connectToDevice(deviceIdentifier: string): Promise<Device>;
+    cancelDeviceConnection(deviceIdentifier: string): Promise<Device>;
   }
 
-  export { BleManager, BleDevice, BleCharacteristic, BleService };
+  export { BleManager, Device, Characteristic };
 }
 
 declare module "react-native-tcp-socket" {
