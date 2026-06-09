@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 import { print } from "./src/index.ts";
 
-const type = process.argv[2] || "spooler";
-const address = process.argv[3] || "POS80 Printer";
+const type = process.argv[2] || "network";
+const address = process.argv[3] || "192.168.1.87";
 const port = parseInt(process.argv[4], 10) || 9100;
 
 print(type, address, [
   { type: "Init" },
   { type: "Align", value: "center" },
-  { type: "Size", value: { width: 2, height: 2 } },
+  { type: "Size", value: { width: 5, height: 5 } },
   { type: "Bold", value: true },
   { type: "Text", value: "STORE NAME" },
   { type: "Bold", value: false },

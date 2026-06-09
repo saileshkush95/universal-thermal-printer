@@ -23,9 +23,9 @@ export function buildEscPos(sections: PrintSection[]): Uint8Array {
       }
 
       case "Size": {
-        const w = Math.min(Math.max(section.value?.width || 1, 1), 2);
-        const h = Math.min(Math.max(section.value?.height || 1, 1), 2);
-        const cmd = (h - 1) * 16 + (w - 1) * 32;
+        const w = Math.min(Math.max(section.value?.width || 1, 1), 8);
+        const h = Math.min(Math.max(section.value?.height || 1, 1), 8);
+        const cmd = ((h - 1) & 0x07) | (((w - 1) & 0x07) << 4);
         parts.push(new Uint8Array([0x1d, 0x21, cmd]));
         break;
       }

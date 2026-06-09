@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 
-Print to thermal printers over **TCP**, **Bluetooth**, or **USB** — works in **Node.js**, **Bun**, and **Expo**.
+Print to thermal printers over **TCP**, **Bluetooth**, or **USB** — works in **Node.js**, **Bun**, **Electron**, and **Expo**.
 
 ## Install
 
@@ -18,6 +18,7 @@ npm install universal-thermal-printer
 |---------|---------|
 | Node.js | >= 18 (for `net` module) |
 | Bun     | >= 1.0  |
+| Electron| >= 28 (uses Node.js `net` module) |
 
 ### Dependencies
 
@@ -232,6 +233,29 @@ npx expo run:ios      # iOS development build
 npx expo run:android  # Android development build (USB requires Android)
 ```
 
+### Electron
+
+Use in the Electron **main process** (not renderer):
+
+```bash
+npm install universal-thermal-printer bluetooth-serial-port serialport
+```
+
+```ts
+// main.js (main process)
+import { print } from "universal-thermal-printer";
+
+await print("network", "192.168.1.87", [
+  { type: "Init" },
+  { type: "Bold", value: true },
+  { type: "Text", value: "Hello from Electron!" },
+  { type: "Bold", value: false },
+  { type: "Cut" },
+]);
+```
+
+For Bluetooth, use `@electron/remote` or IPC to invoke the main process from the renderer.
+
 ### Bare React Native
 
 ```bash
@@ -305,6 +329,7 @@ The package automatically detects the runtime and uses the right transport:
 |---------|-----|-----------|-----|
 | Node.js | `net` (built-in) | `bluetooth-serial-port` | `serialport` |
 | Bun | `net` (built-in) | `bluetooth-serial-port` | `serialport` |
+| Electron | `net` (built-in) | `bluetooth-serial-port` | `serialport` |
 | Expo (Android) | `react-native-tcp-socket` | `expo-ble` | Built-in native module |
 | Expo (iOS) | `react-native-tcp-socket` | `expo-ble` | ❌ |
 
@@ -346,7 +371,7 @@ Each section is `{ type, value? }`.
 | `Init` | — | Reset printer to defaults |
 | `Text` | `string` | Print text with newline |
 | `Align` | `"left"` \| `"center"` \| `"right"` | Alignment |
-| `Size` | `{ width: 1\|2, height: 1\|2 }` | Text size |
+| `Size` | `{ width: 1-8, height: 1-8 }` | Text size (1x to 8x) |
 | `Bold` | `boolean` | Bold on/off |
 | `Underline` | `boolean` | Underline on/off |
 | `Italic` | `boolean` | Italic on/off |
