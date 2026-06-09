@@ -293,6 +293,104 @@ Print a QR Code.
 
 ---
 
+### Table
+
+Print a formatted table with headers, rows, and separators.
+
+```typescript
+{ type: "Table", value: {
+  header: ["Item", "Qty", "Price"],
+  rows: [
+    ["Widget", "2", "$10.00"],
+    ["Gadget", "1", "$20.00"],
+  ],
+  separator: "single",     // "single" | "double" | "none" | "custom"
+  customSeparator: "~",    // used when separator is "custom"
+  headerBold: true,        // bold header row (default true)
+  borderAll: false,         // border around all rows
+  gap: 1,                   // gap between columns (default 1)
+  columnWidths: [10, 5, 8] // custom column widths (optional)
+}}
+```
+
+---
+
+### MultiColumn
+
+Print side-by-side text columns.
+
+```typescript
+{ type: "MultiColumn", value: {
+  columns: [
+    { text: "Left column\nline 2", width: 15 },
+    { text: "Right column\nmore text", width: 15, align: "right" },
+  ],
+  gap: 2  // gap between columns (default 2)
+}}
+```
+
+Per-column options:
+| Field | Values | Description |
+|-------|--------|-------------|
+| `text` | string | Column content, `\n` for multiple lines |
+| `width` | number | Character width of column |
+| `align` | `"left"` \| `"center"` \| `"right"` | Text alignment within column |
+
+---
+
+### Image
+
+Print a raster image (NV graphics bitmap command).
+
+```typescript
+{ type: "Image", value: {
+  rasterData: "base64encoded...",  // base64 of pre-processed raster bytes
+  bytesPerLine: 48,                // bytes per horizontal line
+  height: 128,                     // image height in dots
+  algorithm: 0                     // 0 = normal, 1 = double-width
+}}
+```
+
+**ESC/POS:** `GS v 0 m xL xH yL yH d1...dk`
+
+> Note: Images must be pre-processed to 1-bit raster format. The template builder handles this automatically for uploaded PNG/JPEG files.
+
+---
+
+### LineHeight
+
+Set the line spacing (height between consecutive lines).
+
+```typescript
+{ type: "LineHeight", value: 30 }  // default ~30 dots (0–255)
+```
+**ESC/POS:** `ESC 3 n` (0x1b 0x33)
+
+---
+
+### LetterSpacing
+
+Adjust character spacing. This is a visual-only section — it affects the template builder preview but is a **no-op in ESC/POS** (no standard command exists).
+
+```typescript
+{ type: "LetterSpacing", value: 0 }    // normal
+{ type: "LetterSpacing", value: 1.5 }  // wider
+{ type: "LetterSpacing", value: -0.5 } // tighter
+```
+
+---
+
+### ResetStyle
+
+Reset all style settings to defaults (bold off, size 1x1, left align, etc.).
+
+```typescript
+{ type: "ResetStyle" }
+```
+**ESC/POS:** `ESC @` (0x1b 0x40) — same as Init
+
+---
+
 ## Complete Example
 
 ```typescript

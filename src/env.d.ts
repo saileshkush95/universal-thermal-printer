@@ -41,7 +41,8 @@ declare module "expo-ble" {
 
 declare module "react-native-tcp-socket" {
   interface TcpSocket {
-    write(buffer: Buffer): void;
+    write(buffer: Buffer | string, cb?: () => void): void;
+    end(): void;
     destroy(): void;
     on(event: string, callback: (...args: any[]) => void): void;
   }

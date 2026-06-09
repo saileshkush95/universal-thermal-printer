@@ -67,7 +67,7 @@ public class UsbPrinterModule extends ReactContextBaseJavaModule {
         this.reactContext = reactContext;
         IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            reactContext.registerReceiver(usbReceiver, filter, Context.RECEIVER_EXPORTED, null);
+            reactContext.registerReceiver(usbReceiver, filter, Context.RECEIVER_EXPORTED);
         } else {
             reactContext.registerReceiver(usbReceiver, filter);
         }
@@ -140,7 +140,7 @@ public class UsbPrinterModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void connect(int vendorId, int productId, Promise promise) {
         try {
-            disconnect();
+            disconnectInternal();
             UsbManager usbManager = getUsbManager();
             UsbDevice device = findDevice(vendorId, productId);
 
@@ -219,18 +219,22 @@ public class UsbPrinterModule extends ReactContextBaseJavaModule {
         }
     }
 
+    private void disconnectInternal() {
+        if (currentConnection != null) {
+            if (currentInterface != null) {
+                currentConnection.releaseInterface(currentInterface);
+            }
+            currentConnection.close();
+        }
+        currentConnection = null;
+        currentInterface = null;
+        currentOutEndpoint = null;
+    }
+
     @ReactMethod
     public void disconnect(Promise promise) {
         try {
-            if (currentConnection != null) {
-                if (currentInterface != null) {
-                    currentConnection.releaseInterface(currentInterface);
-                }
-                currentConnection.close();
-            }
-            currentConnection = null;
-            currentInterface = null;
-            currentOutEndpoint = null;
+            disconnectInternal();
             promise.resolve(true);
         } catch (Exception e) {
             promise.reject("USB_DISCONNECT_ERROR", e.getMessage());
