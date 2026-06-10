@@ -59,13 +59,12 @@ function addUsbFeature(androidManifest) {
 }
 
 function withUsbPrinter(config) {
-  ensureLocalProperties(config.modRequest.projectRoot);
-
   const { createRequire } = require("module");
-  const projectRequire = createRequire(path.join(config.modRequest.projectRoot, "noop.js"));
+  const projectRequire = createRequire(path.join(process.cwd(), "noop.js"));
   const { withAndroidManifest } = projectRequire("expo/config-plugins");
 
   return withAndroidManifest(config, (config) => {
+    ensureLocalProperties(config.modRequest.projectRoot);
     config.modResults = addUsbFeature(config.modResults);
     return config;
   });
