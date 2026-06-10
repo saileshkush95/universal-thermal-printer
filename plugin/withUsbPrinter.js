@@ -1,4 +1,3 @@
-const { withAndroidManifest } = require("expo/config-plugins");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
@@ -61,6 +60,10 @@ function addUsbFeature(androidManifest) {
 
 function withUsbPrinter(config) {
   ensureLocalProperties(config.modRequest.projectRoot);
+
+  const { createRequire } = require("module");
+  const projectRequire = createRequire(path.join(config.modRequest.projectRoot, "noop.js"));
+  const { withAndroidManifest } = projectRequire("expo/config-plugins");
 
   return withAndroidManifest(config, (config) => {
     config.modResults = addUsbFeature(config.modResults);
