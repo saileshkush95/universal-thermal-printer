@@ -8,7 +8,7 @@ const port = parseInt(process.argv[4], 10) || 9100;
 print(type, address, [
   { type: "Init" },
   { type: "Align", value: "center" },
-  { type: "Size", value: { width: 5, height: 5 } },
+  { type: "Size", value: { width: 4, height: 4 } },
   { type: "Bold", value: true },
   { type: "Text", value: "STORE NAME" },
   { type: "Bold", value: false },

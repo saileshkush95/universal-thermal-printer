@@ -1,4 +1,40 @@
 const { withAndroidManifest } = require("expo/config-plugins");
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
+
+function detectAndroidSdk() {
+  if (process.env.ANDROID_HOME && fs.existsSync(process.env.ANDROID_HOME)) {
+    return process.env.ANDROID_HOME;
+  }
+
+  const home = os.homedir();
+  const candidates = [
+    path.join(home, "Library", "Android", "sdk"),
+    path.join(home, "Android", "Sdk"),
+    path.join(home, "android", "sdk"),
+    path.join(os.platform() === "win32" ? process.env.LOCALAPPDATA || "" : "", "Android", "Sdk"),
+  ];
+
+  for (const dir of candidates) {
+    if (fs.existsSync(dir)) return dir;
+  }
+
+  return null;
+}
+
+function ensureLocalProperties(projectRoot) {
+  const propsPath = path.join(projectRoot, "android", "local.properties");
+  if (fs.existsSync(propsPath)) return;
+
+  const sdkPath = detectAndroidSdk();
+  if (!sdkPath) return;
+
+  const dir = path.dirname(propsPath);
+  if (!fs.existsSync(dir)) return;
+
+  fs.writeFileSync(propsPath, `sdk.dir=${sdkPath.replace(/\\/g, "\\\\")}\n`, "utf8");
+}
 
 function addUsbFeature(androidManifest) {
   const manifest = androidManifest.manifest;
@@ -24,6 +60,8 @@ function addUsbFeature(androidManifest) {
 }
 
 function withUsbPrinter(config) {
+  ensureLocalProperties(config.modRequest.projectRoot);
+
   return withAndroidManifest(config, (config) => {
     config.modResults = addUsbFeature(config.modResults);
     return config;
