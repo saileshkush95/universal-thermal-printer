@@ -27,16 +27,16 @@ Only the transport packages you actually use are required — everything else is
 | Dependency | Runtime | Required for | Install |
 |------------|---------|-------------|---------|
 | `bluetooth-serial-port` | Node.js / Bun | Classic Bluetooth (SPP) | `npm install bluetooth-serial-port` |
-| `expo-ble` | Expo | BLE Bluetooth | `npx expo install expo-ble` |
+| `react-native-ble-plx` | Expo | BLE Bluetooth | `npx expo install react-native-ble-plx` |
 | `react-native-tcp-socket` | Expo | TCP/Network | `npx expo install react-native-tcp-socket` |
-| `serialport` | Node.js | USB printing | `npm install serialport` |
+| `serialport` | Node.js | USB serial | `npm install serialport` |
 | `pdf-lib` | Node.js / Bun / Expo | A4/PDF printing | `npm install pdf-lib` |
-| — (built-in) | Expo (Android) | USB printing | Included in `universal-thermal-printer` |
+| — (built-in) | Expo (Android) | USB native | Included in `universal-thermal-printer` |
 
 TCP printing on **Node.js/Bun** uses the built-in `net` module — zero additional packages needed.
 On **Expo**, TCP requires `react-native-tcp-socket` and a **development build** (not Expo Go).
 
-USB printing on **Expo (Android)** uses a built-in native module — no extra package needed, just add the config plugin (see below).
+USB printing on **Expo (Android)** uses a built-in native module — just add the config plugin.
 
 > Calling a transport function without its optional package installed throws a clear error telling you exactly what to install.
 
@@ -48,7 +48,7 @@ npm install universal-thermal-printer
 npm install universal-thermal-printer bluetooth-serial-port serialport
 
 # Expo: all transports (requires dev build)
-npx expo install universal-thermal-printer expo-ble react-native-tcp-socket
+npx expo install universal-thermal-printer react-native-ble-plx react-native-tcp-socket
 ```
 
 ---
@@ -56,7 +56,7 @@ npx expo install universal-thermal-printer expo-ble react-native-tcp-socket
 ## API
 
 ```ts
-import { print, listBluetoothPrinters, listUsbPrinters } from "universal-thermal-printer";
+import { print, listBluetoothPrinters, listUsbPrinters, listSpoolerPrinters, listNetworkPrinters } from "universal-thermal-printer";
 import type { PrintSection } from "universal-thermal-printer";
 ```
 
@@ -66,8 +66,8 @@ Print sections to a thermal printer.
 
 | Arg | Type | Description |
 |-----|------|-------------|
-| `type` | `"network"` \| `"bluetooth"` \| `"usb"` | Transport type |
-| `address` | `string` | IP address, Bluetooth MAC, or USB device path. On **Expo Android** use `"vendorId:productId"` (e.g. `"10473:528"`). |
+| `type` | `"network"` \| `"bluetooth"` \| `"usb"` \| `"spooler"` | Transport type |
+| `address` | `string` | IP address, Bluetooth MAC, USB path, or printer name. On **Expo Android** use `"vendorId:productId"` for USB. |
 | `sections` | `PrintSection[]` | Array of print commands |
 | `options.port` | `number` (default `9100`) | TCP port (network only) |
 | `options.baudRate` | `number` (default `9600`) | Baud rate (Node.js USB via serialport only) |
@@ -93,7 +93,7 @@ async function listBluetoothPrinters(): Promise<{ name: string; address: string 
 | Runtime | Backend | Behavior |
 |---------|---------|----------|
 | Node.js / Bun | `bluetooth-serial-port` | Lists paired SPP devices |
-| Expo | `expo-ble` | Scans for BLE peripherals |
+| Expo | `react-native-ble-plx` | Scans for BLE peripherals (5s timeout) |
 
 **Throws** if the optional dependency is not installed.
 
@@ -110,9 +110,36 @@ async function listUsbPrinters(): Promise<{ name: string; deviceId: string }[]>
 | Runtime | Backend | Behavior |
 |---------|---------|----------|
 | Node.js / Bun | `serialport` | Lists USB serial devices |
-| Expo | — | Always throws (USB not available on mobile) |
+| Expo | Built-in native module (Android) | |
+| Expo (iOS) | — | Always throws |
 
-**Throws** on Expo with: `"USB printing is not available on React Native"`.
+---
+
+### `listNetworkPrinters()`
+
+Discover network printers via mDNS/Bonjour + SNMP + port scan.
+
+```ts
+async function listNetworkPrinters(options?): Promise<{ name: string; address: string; port: number }[]>
+```
+
+| Runtime | Backend |
+|---------|---------|
+| Node.js / Bun | Multicast DNS + SNMP queries + TCP scan |
+
+---
+
+### `listSpoolerPrinters()`
+
+List system-installed printers (spooler).
+
+```ts
+async function listSpoolerPrinters(): Promise<{ name: string; deviceId: string }[]>
+```
+
+| Runtime | Backend |
+|---------|---------|
+| Node.js / Bun | Windows: PowerShell WMI; macOS: `lpstat`; Linux: `lpstat` |
 
 ---
 
@@ -141,7 +168,6 @@ await print("network", "192.168.1.87", [
 import { print, listBluetoothPrinters } from "universal-thermal-printer";
 
 const printers = await listBluetoothPrinters();
-// [{ name: "XP-58", address: "00:11:22:33:44:55" }]
 
 await print("bluetooth", printers[0].address, [
   { type: "Init" },
@@ -150,16 +176,12 @@ await print("bluetooth", printers[0].address, [
 ]);
 ```
 
-### USB print
-
-**Node.js / Bun** (via `serialport`):
+### USB print (Node.js)
 
 ```ts
 import { print, listUsbPrinters } from "universal-thermal-printer";
 
 const devices = await listUsbPrinters();
-// [{ name: "USB Printer", deviceId: "/dev/ttyUSB0" }]
-
 await print("usb", devices[0].deviceId, [
   { type: "Init" },
   { type: "Text", value: "USB print works too" },
@@ -167,14 +189,12 @@ await print("usb", devices[0].deviceId, [
 ], { baudRate: 9600 });
 ```
 
-**Expo (Android)** (via built-in native module + config plugin):
+### USB print (Expo Android)
 
 ```ts
 import { print, listUsbPrinters } from "universal-thermal-printer";
 
 const devices = await listUsbPrinters();
-// [{ name: "USB Printer", deviceId: "10473:528" }]
-
 await print("usb", devices[0].deviceId, [
   { type: "Init" },
   { type: "Text", value: "Hello from Android USB!" },
@@ -194,7 +214,6 @@ await print("spooler", "My Printer Name", [
   { type: "Size", value: { width: 3, height: 3 } },
   { type: "Text", value: "INVOICE" },
   { type: "Bold", value: false },
-  { type: "Size", value: { width: 1, height: 1 } },
   { type: "Line", value: "-" },
   { type: "Text", value: "Item 1 ................ $10.00" },
   { type: "Text", value: "Item 2 ................ $20.00" },
@@ -205,103 +224,61 @@ await print("spooler", "My Printer Name", [
   title: "My Store",
   pageSize: "A4",
 });
+```
 
-// Or send A4 PDF to a network printer via TCP
-await print("network", "192.168.1.100", sections, {
-  format: "a4",
-  title: "Invoice",
-});
+### System spooler print
+
+```ts
+import { print } from "universal-thermal-printer";
+
+// macOS/Linux: CUPS lp, Windows: PowerShell .NET
+await print("spooler", "POS80 Printer", [
+  { type: "Init" },
+  { type: "Text", value: "Print via system spooler" },
+  { type: "Cut" },
+]);
 ```
 
 ---
 
-## Expo / React Native usage
+## Expo / React Native
 
-> **Expo Go vs dev build**: `react-native-tcp-socket` and `expo-ble` require a **development build** (`npx expo run:ios` / `npx expo run:android`). They do **not** work in Expo Go because both ship native modules.
+> **Expo Go vs dev build**: `react-native-tcp-socket` and `react-native-ble-plx` require a **development build** (`npx expo run:ios` / `npx expo run:android`). They do **not** work in Expo Go.
 
-### Quick start from scratch
+### Quick start
 
 ```sh
 npx create-expo-app@latest my-print-app
 cd my-print-app
-npx expo install universal-thermal-printer react-native-tcp-socket expo-ble
+npx expo install universal-thermal-printer react-native-tcp-socket react-native-ble-plx
 ```
 
-Configure `app.json` with plugins and permissions:
+Configure `app.json`:
 
 ```json
 {
   "expo": {
     "plugins": [
-      [
-        "expo-ble",
-        {
-          "isBackgroundEnabled": true,
-          "neverForLocation": true
-        }
-      ],
       "universal-thermal-printer/plugin/withUsbPrinter"
     ],
     "ios": {
       "infoPlist": {
-        "NSBluetoothAlwaysUsageDescription": "Used to connect to thermal printers",
-        "NSBluetoothPeripheralUsageDescription": "Used to connect to thermal printers"
-      },
-      "bundleIdentifier": "com.example.myapp"
-    },
-    "android": {
-      "permissions": [
-        "android.permission.BLUETOOTH",
-        "android.permission.BLUETOOTH_ADMIN",
-        "android.permission.BLUETOOTH_SCAN",
-        "android.permission.BLUETOOTH_CONNECT"
-      ]
+        "NSBluetoothAlwaysUsageDescription": "Connect to thermal printers",
+        "NSBluetoothPeripheralUsageDescription": "Connect to thermal printers"
+      }
     }
   }
 }
 ```
 
-Build and run:
+The config plugin auto-detects your Android SDK and creates `android/local.properties` if missing — no manual setup needed.
 
 ```sh
-npx expo run:ios      # iOS development build
-# or
-npx expo run:android  # Android development build (USB requires Android)
+npx expo run:android   # Android dev build
+npx expo run:ios       # iOS dev build
 ```
 
-### Electron
-
-Use in the Electron **main process** (not renderer):
-
-```bash
-npm install universal-thermal-printer bluetooth-serial-port serialport
-```
-
-```ts
-// main.js (main process)
-import { print } from "universal-thermal-printer";
-
-await print("network", "192.168.1.87", [
-  { type: "Init" },
-  { type: "Bold", value: true },
-  { type: "Text", value: "Hello from Electron!" },
-  { type: "Bold", value: false },
-  { type: "Cut" },
-]);
-```
-
-For Bluetooth, use `@electron/remote` or IPC to invoke the main process from the renderer.
-
-### Bare React Native
-
-```bash
-npm install universal-thermal-printer expo-ble react-native-tcp-socket
-cd ios && pod install
-```
-
-Add the same permissions above to `Info.plist` (iOS) and `AndroidManifest.xml` (Android).
-
-### Example
+### Example component
 
 ```tsx
 import { useState } from "react";
@@ -310,91 +287,54 @@ import { print, listBluetoothPrinters } from "universal-thermal-printer";
 
 export default function PrintScreen() {
   const [ip, setIp] = useState("192.168.1.87");
-  const [printers, setPrinters] =
-    useState<{ name: string; address: string }[]>([]);
+  const [printers, setPrinters] = useState([]);
+
+  async function scanBt() {
+    const list = await listBluetoothPrinters();
+    setPrinters(list);
+  }
 
   return (
     <View>
       <TextInput value={ip} onChangeText={setIp} placeholder="Printer IP" />
-      <Button
-        title="Print via Network"
-        onPress={() =>
-          print("network", ip, [
+      <Button title="Print via Network" onPress={() =>
+        print("network", ip, [
+          { type: "Init" },
+          { type: "Bold", value: true },
+          { type: "Align", value: "center" },
+          { type: "Text", value: "Hello from Expo!" },
+          { type: "Feed", value: 3 },
+          { type: "Cut" },
+        ])
+      } />
+      <Button title="Scan Bluetooth Printers" onPress={scanBt} />
+      {printers.map(p => (
+        <Button key={p.address} title={`Print to ${p.name}`} onPress={() =>
+          print("bluetooth", p.address, [
             { type: "Init" },
-            { type: "Bold", value: true },
-            { type: "Align", value: "center" },
-            { type: "Text", value: "Hello from Expo!" },
-            { type: "Bold", value: false },
-            { type: "Feed", value: 3 },
+            { type: "Text", value: "Hello via BLE!" },
             { type: "Cut" },
           ])
-        }
-      />
-
-      <Button
-        title="Scan Bluetooth Printers"
-        onPress={async () => {
-          const list = await listBluetoothPrinters();
-          setPrinters(list);
-        }}
-      />
-
-      {printers.map((p) => (
-        <Button
-          key={p.address}
-          title={`Print to ${p.name}`}
-          onPress={() =>
-            print("bluetooth", p.address, [
-              { type: "Init" },
-              { type: "Text", value: "Hello via Bluetooth!" },
-              { type: "Cut" },
-            ])
-          }
-        />
+        } />
       ))}
     </View>
   );
 }
 ```
 
-## Runtime auto-detection
+---
 
-The package automatically detects the runtime and uses the right transport:
+## Runtime auto-detection
 
 | Runtime | TCP | Bluetooth | USB |
 |---------|-----|-----------|-----|
 | Node.js | `net` (built-in) | `bluetooth-serial-port` | `serialport` |
 | Bun | `net` (built-in) | `bluetooth-serial-port` | `serialport` |
 | Electron | `net` (built-in) | `bluetooth-serial-port` | `serialport` |
-| Expo (Android) | `react-native-tcp-socket` | `expo-ble` | Built-in native module |
-| Expo (iOS) | `react-native-tcp-socket` | `expo-ble` | ❌ |
+| Expo (Android) | `react-native-tcp-socket` | `react-native-ble-plx` | Built-in native module |
+| Expo (iOS) | `react-native-tcp-socket` | `react-native-ble-plx` | ❌ |
 
-No configuration needed — just `npm install` the optional packages you need.
-
-### What doesn't work on Expo
-
-| Transport | Platform | Reason |
-|-----------|----------|--------|
-| USB | iOS | No USB host API on iOS |
-
-## CLI
-
-```bash
-# Via npx
-npx thermal-print 192.168.1.87 9100
-
-# Or globally
-npm install -g universal-thermal-printer
-thermal-print 192.168.1.87 9100
-```
-
-The `print.ts` script at the project root sends a sample receipt to a network printer:
-
-```bash
-# Direct TS (Node 22.6+ / 25+)
-node --experimental-strip-types print.ts
-bun print.ts
-```
+No configuration needed — just install the optional packages you need.
 
 ---
 
@@ -406,24 +346,59 @@ Each section is `{ type, value? }`.
 |------|-------|---------|--------|
 | `Init` | — | Reset printer | Ignored |
 | `Text` | `string` | Print text with newline | PDF text (auto-wrapped) |
-| `Align` | `"left"` \| `"center"` \| `"right"` | Alignment | ✓ |
+| `Align` | `"left"` \| `"center"` \| `"right"` | Horizontal alignment | ✓ |
 | `Size` | `{ width: 1-8, height: 1-8 }` | Text size multiplier | Font size scaled by `max(w,h)` |
 | `Bold` | `boolean` | Bold on/off | ✓ |
-| `Underline` | `boolean` | Underline on/off | Ignored |
-| `Italic` | `boolean` | Italic on/off | Ignored |
+| `Underline` | `boolean` | Underline | Ignored |
+| `Italic` | `boolean` | Italic | Ignored |
 | `Invert` | `boolean` | Reverse printing | Ignored |
-| `Font` | `"A"` \| `"B"` \| `"C"` | Font face | Ignored (uses Helvetica) |
+| `Font` | `"A"` \| `"B"` \| `"C"` | Font face | Ignored |
 | `Rotate` | `boolean` | 90° rotation | Ignored |
 | `UpsideDown` | `boolean` | 180° flip | Ignored |
 | `Feed` | `number` (1-255) | Feed n lines | Adds spacing |
-| `FeedDots` | `number` (1-255) | Feed n dots | Adds spacing (dots→points) |
+| `FeedDots` | `number` (1-255) | Feed n dots | Adds spacing |
 | `Cut` | `"full"` \| `"partial"` | Paper cut | Ignored |
-| `Line` | `string` | Horizontal line | PDF horizontal rule |
+| `Line` | `string` | Horizontal rule (40× char) | PDF horizontal rule |
 | `Drawer` | `2` \| `5` | Open cash drawer | Ignored |
 | `Beep` | `{ times, duration }` | Buzzer | Ignored |
-| `CodePage` | `number` (0-255) | Character page | Ignored (UTF-8) |
+| `CodePage` | `number` (0-255) | Character page | Ignored |
 | `Barcode` | `{ data, barcode_type?, height?, width? }` | 1D barcode | Ignored |
 | `Qr` | `{ data, size?, error_correction? }` | QR code | Ignored |
+| `Table` | `{ header, rows, separator?, headerBold?, borderAll?, gap?, columnWidths? }` | Formatted table | ✓ |
+| `MultiColumn` | `{ columns: [{text, width, align?}], gap? }` | Side-by-side columns | ✓ |
+| `Image` | `{ rasterData, bytesPerLine, height, algorithm? }` | NV bitmap image | ✓ (embedded) |
+| `LineHeight` | `number` (0-255) | ESC 3 n line spacing | Adds spacing |
+| `LetterSpacing` | `number` | Preview-only (no-op in ESC/POS) | ✓ |
+| `ResetStyle` | — | ESC @ reset all styles | ✓ |
+
+> **Note**: Section types use **PascalCase** (`"Init"`, `"Text"`, `"Bold"`, `"Cut"`, etc.). Lowercase values will be silently ignored.
+
+### Table
+
+```ts
+{ type: "Table", value: {
+  header: ["Item", "Qty", "Price"],
+  rows: [["Widget", "2", "$10"], ["Gadget", "1", "$20"]],
+  separator: "single",     // "single" | "double" | "none" | "custom"
+  customSeparator: "~",
+  headerBold: true,
+  borderAll: false,
+  gap: 1,
+  columnWidths: [10, 5, 8]
+}}
+```
+
+### MultiColumn
+
+```ts
+{ type: "MultiColumn", value: {
+  columns: [
+    { text: "Left column\nline 2", width: 15 },
+    { text: "Right column", width: 15, align: "right" },
+  ],
+  gap: 2
+}}
+```
 
 ### Barcode types
 
@@ -431,7 +406,7 @@ Each section is `{ type, value? }`.
 
 ### QR error correction
 
-| value | Recovery |
+| Value | Recovery |
 |-------|----------|
 | `L` | ~7% |
 | `M` | ~15% (default) |
@@ -440,28 +415,61 @@ Each section is `{ type, value? }`.
 
 ---
 
+## Template Builder
+
+Visual drag-and-drop template builder at:
+
+**[https://thermal-print-builder.pages.dev](https://thermal-print-builder.pages.dev)**
+
+- Design receipts with live preview
+- 25+ section types (text, barcode, QR, table, image, multi-column, cut, drawer, beep…)
+- Export/import JSON templates
+- Paper sizes: 58mm, 80mm, A4, Letter
+- Theme support (dark/light)
+- Run locally: `cd builder && bun dev`
+
+---
+
+## CLI
+
+```bash
+npx thermal-print <ip> <port>
+
+# Sample receipt to network printer
+bun print.ts
+node --experimental-strip-types print.ts
+```
+
+---
+
 ## Project Structure
 
 ```
 src/
-├── index.ts              # Exports: print, listBluetoothPrinters, listUsbPrinters
-├── cli.ts                # CLI entry point (`thermal-print`)
+├── index.ts              # Node.js/Bun entry
+├── index.rn.ts           # Expo/RN entry (dynamic imports)
+├── cli.ts                # CLI entry point
 ├── escpos.ts             # ESC/POS command builder
+├── pdf.ts                # A4/PDF builder (pdf-lib)
+├── env.d.ts              # Type declarations for optional deps
 └── transport/
-    ├── tcp.ts            # Node.js built-in net module
-    ├── bluetooth.ts      # bluetooth-serial-port (optional)
-    └── usb.ts            # serialport (optional)
+    ├── tcp.ts            # Node.js built-in net
+    ├── bluetooth.ts      # bluetooth-serial-port (Node.js)
+    ├── bluetooth-expo.ts # react-native-ble-plx (Expo)
+    ├── usb.ts            # serialport (Node.js)
+    ├── usb-expo.ts       # Android USB native bridge
+    ├── spooler.ts        # CUPS / PowerShell spooler
+    ├── detect.ts         # Runtime detection
+    └── network-discovery.ts # mDNS + SNMP discovery
+android/                  # Android USB native module
+plugin/                   # Expo config plugin
+builder/                  # Visual template builder (Vite + React)
+docs/                     # Per-transport documentation
 ```
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request.
-
-1. Fork the repo
-2. Create a feature branch (`git checkout -b feature/amazing`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing`)
-5. Open a Pull Request
+Contributions welcome! Please open an issue or submit a pull request.
 
 ## License
 
