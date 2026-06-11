@@ -51,20 +51,32 @@ async function importNetworkTcp() {
     return {
       sendToPrinter: async (ip: string, port: number, data: Uint8Array) => {
         return new Promise<string>((resolve, reject) => {
+          let settled = false;
           const client = tcp.createConnection(
             { host: ip, port, timeout: 10000 },
             () => {
-              const payload = typeof Buffer !== "undefined"
-                ? Buffer.from(data)
-                : Array.from(data, (b: number) => String.fromCharCode(b)).join("");
-              const flushed = client.write(payload);
-              client.destroy();
-              resolve(`Print job sent successfully to ${ip}:${port}`);
+              (client as any).write(data, undefined, (err?: Error) => {
+                if (err) {
+                  if (!settled) {
+                    settled = true;
+                    reject(`Failed to send data: ${err.message}`);
+                  }
+                  return;
+                }
+                client.end();
+                if (!settled) {
+                  settled = true;
+                  resolve("Print job sent successfully");
+                }
+              });
             }
           );
           client.on("error", (err: Error) => {
             client.destroy();
-            reject(`Failed to send data: ${err.message}`);
+            if (!settled) {
+              settled = true;
+              reject(`Failed to send data: ${err.message}`);
+            }
           });
         });
       },

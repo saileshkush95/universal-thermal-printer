@@ -12,46 +12,77 @@ export async function sendToPrinter(
   const rt = runtime();
 
   if (rt === "expo") {
-    const { TcpSocket } = await import(moduleName("react-native-tcp-socket"));
+    const tcp = await import(moduleName("react-native-tcp-socket"));
     return new Promise((resolve, reject) => {
-      const client = TcpSocket.createConnection(
+      let settled = false;
+      const client = tcp.createConnection(
         { host: ip, port, timeout: 5000 },
         () => {
-          const payload = typeof Buffer !== "undefined"
-            ? Buffer.from(data)
-            : (data as any);
-          client.write(payload);
-          client.destroy();
-          resolve("Print job sent successfully");
+          (client as any).write(data, undefined, (err?: Error) => {
+            if (err) {
+              if (!settled) {
+                settled = true;
+                reject(`Failed to send data: ${err.message}`);
+              }
+              return;
+            }
+            client.end();
+            if (!settled) {
+              settled = true;
+              resolve("Print job sent successfully");
+            }
+          });
         }
       );
       client.on("error", (err: Error) => {
         client.destroy();
-        reject(`Failed to send data: ${err.message}`);
+        if (!settled) {
+          settled = true;
+          reject(`Failed to send data: ${err.message}`);
+        }
       });
     });
   }
 
   const net: any = await import(moduleName("net"));
   return new Promise((resolve, reject) => {
+    let settled = false;
+
     const socket = new net.Socket();
     socket.setTimeout(5000);
 
     socket.connect(port, ip, () => {
-      socket.write(Buffer.from(data), () => {
-        socket.destroy();
-        resolve("Print job sent successfully");
+      socket.write(Buffer.from(data), (err?: Error | null) => {
+        if (err) {
+          socket.destroy();
+          if (!settled) {
+            settled = true;
+            reject(`Failed to send data: ${err.message}`);
+          }
+          return;
+        }
+        socket.end();
+        if (!settled) {
+          settled = true;
+          resolve("Print job sent successfully");
+        }
       });
     });
 
     socket.on("error", (err: Error) => {
       socket.destroy();
-      reject(`Failed to send data: ${err.message}`);
+      if (!settled) {
+        settled = true;
+        reject(`Failed to send data: ${err.message}`);
+      }
     });
 
     socket.on("timeout", () => {
       socket.destroy();
-      reject(`Connection timed out to ${ip}:${port}`);
+      if (!settled) {
+        settled = true;
+        reject(`Connection timed out to ${ip}:${port}`);
+      }
     });
   });
 }

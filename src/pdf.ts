@@ -1,4 +1,3 @@
-import { PDFDocument, PDFPage, rgb, StandardFonts, type PDFFont } from "pdf-lib";
 import type { PrintSection } from "./escpos.js";
 
 export interface PdfOptions {
@@ -25,16 +24,17 @@ interface RenderState {
   fontSize: number;
   bold: boolean;
   align: "left" | "center" | "right";
-  font: PDFFont;
-  boldFont: PDFFont;
-  page: PDFPage;
-  doc: PDFDocument;
+  font: any;
+  boldFont: any;
+  page: any;
+  doc: any;
 }
 
 export async function buildPdf(
   sections: PrintSection[],
   options?: PdfOptions
 ): Promise<Uint8Array> {
+  const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
   const doc = await PDFDocument.create();
   const [pw, ph] = PAGE_DIMENSIONS[options?.pageSize || "A4"];
   const margin = options?.margins ?? 40;
