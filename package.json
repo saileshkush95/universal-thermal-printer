@@ -1,6 +1,6 @@
 {
   "name": "universal-thermal-printer",
-  "version": "0.5.6",
+  "version": "0.6.0",
   "type": "module",
   "description": "Print to thermal (ESC/POS) and A4 (PDF) printers via TCP, Bluetooth, USB, or system spooler — works in Node.js, Bun, Electron, and Expo",
   "license": "MIT",
@@ -41,7 +41,17 @@
     "star-micronics",
     "cross-platform",
     "raw-printing",
-    "kitchen-display"
+    "kitchen-display",
+    "webusb",
+    "web-serial",
+    "browser",
+    "chrome",
+    "zadig",
+    "winusb",
+    "usbprint",
+    "virtual-prn",
+    "chrome-webusb",
+    "browser-printing"
   ],
   "files": [
     "dist",
@@ -62,8 +72,13 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "browser": "./dist/index.web.js",
       "react-native": "./dist/index.rn.js",
       "import": "./dist/index.js"
+    },
+    "./web": {
+      "types": "./dist/index.web.d.ts",
+      "import": "./dist/index.web.js"
     },
     "./plugin/withUsbPrinter": "./plugin/withUsbPrinter.js",
     "./package.json": "./package.json"
@@ -77,6 +92,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "build:web": "tsc --outDir dist --rootDir src && cp dist/index.web.js dist/index.web.mjs",
     "prepublishOnly": "npm run build",
     "prepack": "npm run build"
   },

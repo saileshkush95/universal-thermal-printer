@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 
-Print to thermal (ESC/POS) and A4 (PDF) printers over **TCP**, **Bluetooth**, **USB**, or **system spooler** — works in **Node.js**, **Bun**, **Electron**, and **Expo**.
+Print to thermal (ESC/POS) and A4 (PDF) printers over **TCP**, **Bluetooth**, **USB**, **system spooler**, or **WebUSB / Web Serial** — works in **Node.js**, **Bun**, **Electron**, **Expo**, and the **browser**.
 
 ## Install
 
@@ -19,6 +19,7 @@ npm install universal-thermal-printer
 | Node.js | >= 18 (for `net` module) |
 | Bun     | >= 1.0  |
 | Electron| >= 28 (uses Node.js `net` module) |
+| Browser | Chrome / Edge >= 89 (WebUSB + Web Serial) |
 
 ### Dependencies
 
@@ -60,6 +61,14 @@ import { print, listBluetoothPrinters, listUsbPrinters, listSpoolerPrinters, lis
 import type { PrintSection } from "universal-thermal-printer";
 ```
 
+### Browser entry
+
+```ts
+import { print, requestUsbDevice, listUsbPrinters, requestSerialDevice } from "universal-thermal-printer/web";
+```
+
+WebUSB and Web Serial transports are available via the `"/web"` sub-path export.
+
 ### `print(type, address, sections, options?)`
 
 Print sections to a thermal printer.
@@ -67,7 +76,7 @@ Print sections to a thermal printer.
 | Arg | Type | Description |
 |-----|------|-------------|
 | `type` | `"network"` \| `"bluetooth"` \| `"usb"` \| `"spooler"` | Transport type |
-| `address` | `string` | IP address, Bluetooth MAC, USB path, or printer name. On **Expo Android** use `"vendorId:productId"` for USB. |
+| `address` | `string` | IP address, Bluetooth MAC, USB path, or printer name. On **Expo Android** use `"vendorId:productId"` for USB. In **browser** use `deviceId` from `requestUsbDevice()`. |
 | `sections` | `PrintSection[]` | Array of print commands |
 | `options.port` | `number` (default `9100`) | TCP port (network only) |
 | `options.baudRate` | `number` (default `9600`) | Baud rate (Node.js USB via serialport only) |
@@ -112,6 +121,7 @@ async function listUsbPrinters(): Promise<{ name: string; deviceId: string }[]>
 | Node.js / Bun | `serialport` | Lists USB serial devices |
 | Expo | Built-in native module (Android) | |
 | Expo (iOS) | — | Always throws |
+| Browser | WebUSB | Lists previously paired devices (no chooser) |
 
 ---
 
@@ -226,6 +236,26 @@ await print("spooler", "My Printer Name", [
 });
 ```
 
+### Browser WebUSB print
+
+```ts
+import { print, requestUsbDevice } from "universal-thermal-printer/web";
+
+// Shows browser chooser dialog — user selects printer
+const device = await requestUsbDevice();
+
+await print("usb", device.deviceId, [
+  { type: "Init" },
+  { type: "Align", value: "center" },
+  { type: "Size", value: { width: 2, height: 2 } },
+  { type: "Text", value: "Hello from the browser!" },
+  { type: "Feed", value: 3 },
+  { type: "Cut" },
+]);
+```
+
+Requires Chrome/Edge 89+ on HTTPS or localhost. See [docs/browser.md](docs/browser.md) for Web USB troubleshooting (Zadig driver fix).
+
 ### System spooler print
 
 ```ts
@@ -333,6 +363,7 @@ export default function PrintScreen() {
 | Electron | `net` (built-in) | `bluetooth-serial-port` | `serialport` |
 | Expo (Android) | `react-native-tcp-socket` | `react-native-ble-plx` | Built-in native module |
 | Expo (iOS) | `react-native-tcp-socket` | `react-native-ble-plx` | ❌ |
+| Browser | ❌ | ❌ | WebUSB + Web Serial (via `"/web"` entry) |
 
 No configuration needed — just install the optional packages you need.
 
@@ -430,6 +461,34 @@ Visual drag-and-drop template builder at:
 
 ---
 
+## Browser Troubleshooting
+
+### WebUSB on Windows — "Could not claim the printer interface" / "Virtual PRN"
+
+On Windows, the default USB printer driver (`usbprint.sys`) claims the interface and blocks WebUSB. The device may show as **"Virtual PRN"** — a virtual device created by the manufacturer's driver.
+
+**Fix with Zadig:**
+
+1. Download [Zadig](https://zadig.akeo.ie/)
+2. Go to **Options → List All Devices**
+3. Select your printer (`USB Printing Support` or `VID_0FE6&PID_811E`)
+4. In the right column, select **WinUSB**
+5. Click **Replace Driver**
+
+After swapping to WinUSB, the browser can claim the interface. The printer won't appear in Windows Printers & Scanners (revert with Zadig anytime).
+
+### WebUSB on Windows — "Failed to execute 'open' on 'USBDevice': Access denied"
+
+The device session is stuck. Unplug the printer, wait 5 seconds, plug it back in, then click Connect again in the browser.
+
+### WebUSB on macOS — "Could not claim the printer interface"
+
+macOS kernel driver (IOKit) has the interface. Remove the printer from **System Settings → Printers & Scanners**, then reconnect.
+
+### Web Serial doesn't show any ports
+
+Only printers with USB-to-serial chips (CH340, CP2102, FTDI) appear as serial ports. Native USB printers won't show up here. Use the **WebUSB** transport with Zadig instead.
+
 ## CLI
 
 ```bash
@@ -448,6 +507,7 @@ node --experimental-strip-types print.ts
 src/
 ├── index.ts              # Node.js/Bun entry
 ├── index.rn.ts           # Expo/RN entry (dynamic imports)
+├── index.web.ts          # Browser entry (WebUSB + Web Serial)
 ├── cli.ts                # CLI entry point
 ├── escpos.ts             # ESC/POS command builder
 ├── pdf.ts                # A4/PDF builder (pdf-lib)
@@ -458,6 +518,8 @@ src/
     ├── bluetooth-expo.ts # react-native-ble-plx (Expo)
     ├── usb.ts            # serialport (Node.js)
     ├── usb-expo.ts       # Android USB native bridge
+    ├── usb-web.ts        # WebUSB transport (browser)
+    ├── serial-web.ts     # Web Serial transport (browser)
     ├── spooler.ts        # CUPS / PowerShell spooler
     ├── detect.ts         # Runtime detection
     └── network-discovery.ts # mDNS + SNMP discovery

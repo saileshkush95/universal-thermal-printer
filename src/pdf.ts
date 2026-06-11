@@ -1,4 +1,5 @@
 import type { PrintSection } from "./escpos.js";
+import type { PDFFont } from "pdf-lib";
 
 export interface PdfOptions {
   pageSize?: "A4" | "Letter";

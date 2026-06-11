@@ -15,9 +15,16 @@ export function isExpo(): boolean {
     && (navigator as any).product === "ReactNative";
 }
 
-export function runtime(): "bun" | "node" | "expo" | "unknown" {
+export function isBrowser(): boolean {
+  return typeof window !== "undefined"
+    && typeof document !== "undefined"
+    && !isExpo();
+}
+
+export function runtime(): "bun" | "node" | "expo" | "browser" | "unknown" {
   if (isBun()) return "bun";
   if (isNode()) return "node";
   if (isExpo()) return "expo";
+  if (isBrowser()) return "browser";
   return "unknown";
 }

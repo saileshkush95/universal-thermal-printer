@@ -5,15 +5,17 @@ Supports **Network (TCP)**, **Bluetooth (SPP + BLE)**, **USB (serial + system sp
 
 ## Features
 
-| Transport | Node.js | Bun | Expo Android | Expo iOS |
-|-----------|---------|-----|-------------|----------|
-| Network (TCP) | built-in `net` | built-in `net` | `react-native-tcp-socket` | `react-native-tcp-socket` |
-| Bluetooth (SPP) | `bluetooth-serial-port` | `bluetooth-serial-port` | — | — |
-| Bluetooth (BLE) | — | — | `expo-ble` | `expo-ble` |
-| USB (serial) | `serialport` | `serialport` | — | — |
-| USB (system printer) | winspool / CUPS | winspool / CUPS | — | — |
-| USB (native Android) | — | — | Built-in native module | — |
-| OS Print Spooler | winspool / CUPS | winspool / CUPS | — | — |
+| Transport | Node.js | Bun | Expo Android | Expo iOS | Browser |
+|-----------|---------|-----|-------------|----------|---------|
+| Network (TCP) | built-in `net` | built-in `net` | `react-native-tcp-socket` | `react-native-tcp-socket` | ❌ |
+| Bluetooth (SPP) | `bluetooth-serial-port` | `bluetooth-serial-port` | — | — | ❌ |
+| Bluetooth (BLE) | — | — | `expo-ble` | `expo-ble` | ❌ |
+| USB (serial) | `serialport` | `serialport` | — | — | ❌ |
+| USB (system printer) | winspool / CUPS | winspool / CUPS | — | — | ❌ |
+| USB (native Android) | — | — | Built-in native module | — | ❌ |
+| WebUSB | ❌ | ❌ | ❌ | ❌ | ✅ Chrome/Edge 89+ |
+| Web Serial | ❌ | ❌ | ❌ | ❌ | ✅ Chrome/Edge 89+ |
+| OS Print Spooler | winspool / CUPS | winspool / CUPS | — | — | ❌ |
 
 ## Documentation
 
@@ -27,3 +29,4 @@ Supports **Network (TCP)**, **Bluetooth (SPP + BLE)**, **USB (serial + system sp
 - [CLI](cli.md) — Command-line interface
 - [React Native / Expo](expo.md) — Mobile printing setup
 - [Android Native Module](android.md) — USB native module internals
+- [Browser (WebUSB / Web Serial)](browser.md) — Print from browser via WebUSB or Web Serial API
