@@ -154,6 +154,200 @@ const device = await requestSerialDevice();
 Web Serial transport uses **19200 baud** by default. Most thermal printers support this rate.  
 If your printer uses a different rate, you'll need to modify the transport.
 
+## Customer Display
+
+Control serial customer-facing displays (pole displays, LCD customer displays) like Epson DM-D, Star SPCD, and POS-X.
+
+```ts
+import { requestSerialDevice, displayText, displayClear } from "universal-thermal-printer/web";
+
+const device = await requestSerialDevice();
+
+// Show two lines
+await displayText(device.deviceId, {
+  line1: "Total: $42.00",
+  line2: "Thank you!",
+  clear: true,         // clear display before writing (default: true)
+  brightness: "normal", // "normal" | "dim" | "bright"
+});
+
+// Clear display
+await displayClear(device.deviceId);
+```
+
+### API
+
+```ts
+// Update display text
+displayText(deviceId: string, options: {
+  line1: string;       // top line text (max ~20 chars)
+  line2?: string;      // bottom line text (max ~20 chars)
+  clear?: boolean;     // clear before write (default: true)
+  brightness?: "normal" | "dim" | "bright";
+}): Promise<string>
+
+// Clear display
+displayClear(deviceId: string): Promise<string>
+```
+
+### Command Set
+
+Uses Epson DM-D compatible ESC/POS display commands:
+- `0x0C` (FF) — clear display
+- `ESC @` — reset
+- `ESC L row col` — set cursor position (1-indexed)
+- Plain text — write to current position
+
+Most 2-line x 20-character pole displays are supported. Baud rate: **9600**.
+
+## Weighing Scale
+
+Read weight from USB-serial scales via Web Serial. Supports continuous stream mode and poll/request mode.
+
+```ts
+import { requestSerialDevice, scaleRead, scaleStartStream } from "universal-thermal-printer/web";
+
+const device = await requestSerialDevice();
+
+// One-time read (sends poll command, waits for response)
+const reading = await scaleRead(device.deviceId, {
+  baudRate: 9600,
+  pollCommand: "W\r\n",   // command to request weight (varies by scale)
+  timeout: 3000,          // ms to wait for response
+});
+
+console.log(reading);
+// { weight: 1.500, unit: "kg", stable: true, raw: "S, +001.500kg" }
+
+// Continuous stream (scale sends data periodically)
+const stop = await scaleStartStream(device.deviceId, {
+  onWeight: (r) => {
+    console.log(`${r.weight} ${r.unit} ${r.stable ? "(stable)" : "(unstable)"}`);
+  },
+  onError: (err) => console.error(err),
+}, { baudRate: 9600 });
+
+// Later: stop the stream
+await stop();
+```
+
+### API
+
+```ts
+// One-time weight reading
+scaleRead(deviceId: string, options?: {
+  baudRate?: number;       // default: 9600
+  timeout?: number;        // default: 3000ms
+  pollCommand?: string;    // default: "W\r\n"
+}): Promise<WeightReading>
+
+// Continuous weight stream
+scaleStartStream(deviceId: string, callbacks: {
+  onWeight: (reading: WeightReading) => void;
+  onError?: (err: Error) => void;
+}, options?: {
+  baudRate?: number;
+  pollCommand?: string;
+}): Promise<() => Promise<void>>  // returns stop function
+```
+
+### WeightReading
+
+```ts
+interface WeightReading {
+  weight: number;   // parsed weight value (e.g., 1.500)
+  unit: string;     // "kg", "g", "lb", "oz"
+  stable: boolean;  // true if scale reports stable reading
+  raw: string;      // raw response from scale
+}
+```
+
+### Supported Scale Protocols
+
+| Format | Example | Scales |
+|--------|---------|--------|
+| CAS / Dibal | `S, +001.500kg` | CAS, Dibal, many POS scales |
+| Mettler Toledo | `ST,GS,+0001.500kg` | Mettler Toledo |
+| Simple | `   1.500 kg` | Generic scales in continuous mode |
+| NCR | `S 1.500kg` | NCR scales |
+
+### Common Poll Commands
+
+| Scale Brand | Command |
+|-------------|---------|
+| CAS / Dibal | `W\r\n` |
+| Mettler Toledo | `SI\r\n` or `\x05` (ENQ) |
+| Generic | `W\r\n` or `\x05` |
+| Continuous mode (no poll) | just wait for incoming data |
+
+## HID Scale (WebHID)
+
+Some USB scales support HID (Human Interface Device) mode — they appear as a HID device instead of a serial port. WebHID API allows reading weight data directly.
+
+```ts
+import { requestHidScale, hidScaleRead, hidScaleStartStream } from "universal-thermal-printer/web";
+
+// Request HID scale (shows browser chooser)
+const device = await requestHidScale();
+
+// One-time read
+const reading = await hidScaleRead(device.deviceId);
+console.log(reading);
+// { weight: 1.500, unit: "kg", stable: true, raw: [18, 0, 150, ...] }
+
+// Continuous stream
+const stop = await hidScaleStartStream(device.deviceId, {
+  onWeight: (r) => console.log(`${r.weight} ${r.unit}`),
+  onError: (err) => console.error(err),
+});
+```
+
+### API
+
+```ts
+// List previously granted HID scales
+listHidScales(): Promise<{ name, deviceId, vendorId, productId }[]>
+
+// Request HID scale (browser chooser)
+requestHidScale(filters?): Promise<{ name, deviceId, vendorId, productId }>
+
+// One-time weight reading
+hidScaleRead(deviceId, options?): Promise<HidWeightReading>
+
+// Continuous HID input stream
+hidScaleStartStream(deviceId, callbacks, options?): Promise<stopFunction>
+```
+
+### HID Weight Report Parsing
+
+The transport attempts to parse common HID scale report formats:
+
+| Byte(s) | Field |
+|---------|-------|
+| Byte 0 | Status (bit 0 = unstable) |
+| Bytes 1-4 | Weight value (32-bit signed LE, ÷100 or ÷1000) |
+| Byte 5 | Unit indicator (0x02=g, 0x03=lb, 0x04=oz) |
+
+This covers most POS and industrial scales in HID mode. If your scale uses a different format, the `raw` field contains the unparsed byte array.
+
+### HID vs Serial Scale
+
+| Aspect | Serial Scale | HID Scale |
+|--------|-------------|-----------|
+| Chooser | Serial port picker | HID device picker |
+| Baud rate | Configurable | Not needed (USB) |
+| Data format | Text string | Binary report |
+| Latency | Low | Very low |
+| Common scales | CAS, Dibal, NCR | Mettler Toledo, some POS scales |
+
+## Transport Comparison
+
+| Feature | WebUSB | Web Serial | WebHID |
+|---------|--------|------------|--------|
+| Best for | Native USB printers | USB-serial printers + displays + scales | HID scales |
+| Driver needed | WinUSB (Zadig) | None (built-in) | None (built-in) |
+| Browser dialog | Device chooser | Serial port chooser | HID device chooser |
+
 ## Debugging
 
 Use `browseUsbDevice()` to inspect USB interface details (class codes, endpoints):

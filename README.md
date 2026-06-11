@@ -489,6 +489,17 @@ macOS kernel driver (IOKit) has the interface. Remove the printer from **System 
 
 Only printers with USB-to-serial chips (CH340, CP2102, FTDI) appear as serial ports. Native USB printers won't show up here. Use the **WebUSB** transport with Zadig instead.
 
+## Next Features (Planned)
+
+- **Browser network printing** — WebSocket proxy server to relay print jobs from browser to TCP network printers
+- **Live receipt preview** — Render ESC/POS output visually in the browser before printing
+- **Cloudflare Worker print API** — Deploy a Worker that accepts print jobs and forwards to network printers via tunnel
+- **Job queue / spooler** — Queue multiple print jobs with retry and status
+- **Receipt templates** — Built-in templates for invoices, orders, kitchen tickets
+- **Multiple paper sizes** — 58mm, 80mm, 2-inch, 4-inch automatic formatting
+- **Better WebUSB error recovery** — Handle device disconnect/reconnect gracefully during a print job
+- **React hooks** — `usePrinter()`, `useUsbDevice()`, `useScale()` for easy React integration
+
 ## CLI
 
 ```bash
