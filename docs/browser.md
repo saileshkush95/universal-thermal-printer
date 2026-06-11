@@ -46,18 +46,35 @@ await print("usb", device.deviceId, [
 
 ### Windows Driver Issue
 
-On Windows, the default USB printer driver (`usbprint.sys`) claims the interface and blocks WebUSB. You'll see "Could not claim the printer interface" errors.
+On Windows, the default USB printer driver (`usbprint.sys`) claims the interface and blocks WebUSB. You'll see "Could not claim the printer interface" errors. The device may show as **"Virtual PRN"** in the browser — this is the OS driver masking the real USB hardware.
 
-**Fix:** Use [Zadig](https://zadig.akeo.ie/) to replace the driver:
+**Fix with Zadig** — replaces the OS driver with WinUSB so the browser can access the device:
 
-1. Download and run Zadig
-2. Go to **Options → List All Devices**
-3. Select your printer (e.g. `USB Printing Support`, `VID 0FE6`)
-4. In the right column, select **WinUSB**
-5. Click **Replace Driver**
+1. Download [Zadig](https://zadig.akeo.ie/) (the executable, no install needed)
+2. **Run Zadig as Administrator** (right-click → Run as administrator)
+3. Go to **Options → List All Devices** (important — printer won't appear in default mode)
+4. From the dropdown, select your printer. Look for:
+   - `USB Printing Support` (common name)
+   - `Virtual PRN` (if showing in browser)
+   - Or find by VID/PID: `0FE6:811E` for common thermal printers
+   - Check the USB ID matches what you see in `browseUsbDevice()`
+5. In the right column (target driver), select **WinUSB** (not libusb-win32, not libusb0)
+6. Click **Replace Driver**
+7. Wait for "Driver installed successfully"
+8. **Restart the browser** (not just refresh the tab)
 
-> ⚠️ After swapping to WinUSB, the printer won't appear in Windows Printers & Scanners.  
-> Revert anytime by running Zadig again and selecting the original driver.
+**After Zadig:**
+- The printer disappears from Windows **Printers & Scanners** — this is expected
+- Open the test app, click Connect — the printer should appear and `claimInterface()` should succeed
+- To verify it worked: run `browseUsbDevice()` and check it shows `Opened: true`
+
+**To revert (get back Windows printing):**
+1. Run Zadig again as Administrator
+2. Select the same device
+3. Choose the original driver (`usbprint`) or click **Install WCID Driver**
+4. Or go to **Device Manager** → right-click printer → **Update driver** → **Browse my computer** → **Let me pick from a list** → select **USB Printing Support**
+
+> ⚠️ **Why this happens:** Windows loads `usbprint.sys` when a printer-class USB device is plugged in. This kernel driver has exclusive access to the USB interface. WebUSB needs WinUSB instead, which allows user-space applications (like Chrome) to claim the interface. Zadig swaps the driver at the USB level — this is the official Microsoft-recommended approach for WinUSB.
 
 ### API
 

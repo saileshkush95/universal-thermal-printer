@@ -467,15 +467,15 @@ Visual drag-and-drop template builder at:
 
 On Windows, the default USB printer driver (`usbprint.sys`) claims the interface and blocks WebUSB. The device may show as **"Virtual PRN"** — a virtual device created by the manufacturer's driver.
 
-**Fix with Zadig:**
+**Fix with Zadig** — replaces the OS driver with WinUSB:
 
-1. Download [Zadig](https://zadig.akeo.ie/)
-2. Go to **Options → List All Devices**
-3. Select your printer (`USB Printing Support` or `VID_0FE6&PID_811E`)
-4. In the right column, select **WinUSB**
-5. Click **Replace Driver**
+1. Download [Zadig](https://zadig.akeo.ie/) and **run as Administrator**
+2. **Options → List All Devices** (critical — printer won't appear in default mode)
+3. Select your printer from the dropdown (`USB Printing Support`, `Virtual PRN`, or `VID_0FE6&PID_811E`)
+4. In the right column, select **WinUSB** (not libusb-win32)
+5. Click **Replace Driver**, then **restart the browser**
 
-After swapping to WinUSB, the browser can claim the interface. The printer won't appear in Windows Printers & Scanners (revert with Zadig anytime).
+After swapping to WinUSB, WebUSB can claim the interface. The printer won't appear in Windows Printers & Scanners (revert with Zadig anytime by selecting the original `usbprint` driver).
 
 ### WebUSB on Windows — "Failed to execute 'open' on 'USBDevice': Access denied"
 
