@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, Fragment } from "react";
 import type { PrintSection, PaperFormat, Template } from "./types";
 import { SECTION_DEFS } from "./types";
 import { SectionEditor } from "./components/SectionEditor";
@@ -31,6 +31,7 @@ export default function App() {
   const moveSection = useCallback((i: number, d: -1 | 1) => setSections((p) => {
     const n = [...p], t = i + d;
     if (t < 0 || t >= n.length) return n;
+    if (t === 0) return n;
     [n[i], n[t]] = [n[t], n[i]];
     return n;
   }), []);
@@ -45,15 +46,16 @@ export default function App() {
 
   const handleDragOver = useCallback((e: React.DragEvent, i: number) => {
     e.preventDefault();
-    if (dragIdx !== null && dragIdx !== i) setDragOverIdx(i);
+    if (dragIdx !== null && i !== null && i !== 0 && i !== dragIdx) setDragOverIdx(i);
   }, [dragIdx]);
 
   const handleDragEnd = useCallback(() => {
-    if (dragIdx !== null && dragOverIdx !== null && dragIdx !== dragOverIdx) {
+    if (dragIdx !== null && dragOverIdx !== null && dragIdx !== dragOverIdx && dragOverIdx !== 0) {
       setSections((p) => {
         const n = [...p];
         const [moved] = n.splice(dragIdx, 1);
-        n.splice(dragOverIdx, 0, moved);
+        const adjustedTarget = dragOverIdx > dragIdx ? dragOverIdx - 1 : dragOverIdx;
+        n.splice(adjustedTarget, 0, moved);
         return n;
       });
     }
@@ -171,12 +173,26 @@ export default function App() {
           {sections.length === 0 ? (
             <div className="text-center py-8 text-slate-400 dark:text-slate-600 text-xs mt-8">Add sections or load a template</div>
           ) : (
-            <div className="flex flex-col gap-1 pb-4">
-              {sections.map((s, i) => (
-                <SectionEditor key={i} section={s} index={i} onChange={updateSection} onRemove={removeSection} onMove={moveSection}
-                  onDragStart={handleDragStart} onDragOverSection={handleDragOver} onDragEnd={handleDragEnd}
-                  isDragTarget={dragOverIdx === i && dragIdx !== i} />
-              ))}
+            <div className="flex flex-col pb-4">
+              {sections.map((s, i) => {
+                const isDrop = dragIdx !== null;
+                const dropBefore = isDrop && dragOverIdx === i;
+                const dropAfter = isDrop && dragOverIdx === i + 1;
+                const dropZone = (idx: number) => (
+                  <div className="flex items-center h-2 px-0.5"
+                    onDragOver={(e) => handleDragOver(e, idx)}>
+                    <div className="flex-1 border-t-2 border-dashed border-blue-400" />
+                  </div>
+                );
+                return (
+                  <Fragment key={i}>
+                    {dropBefore && dropZone(i)}
+                    <SectionEditor section={s} index={i} onChange={updateSection} onRemove={removeSection} onMove={moveSection}
+                      onDragStart={handleDragStart} onDragOverSection={handleDragOver} onDragEnd={handleDragEnd} />
+                    {dropAfter ? dropZone(i + 1) : i < sections.length - 1 && <div className="h-2" />}
+                  </Fragment>
+                );
+              })}
             </div>
           )}
         </div>
