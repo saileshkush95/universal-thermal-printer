@@ -1,5 +1,11 @@
 import type { PrintSection } from "./escpos.js";
-import type { PDFFont } from "pdf-lib";
+
+type RgbColor = { r: number; g: number; b: number; type: "RGB" };
+function rgb(r: number, g: number, b: number): RgbColor {
+  return { r, g, b, type: "RGB" };
+}
+
+type PDFFont = { widthOfTextAtSize(text: string, size: number): number };
 
 export interface PdfOptions {
   pageSize?: "A4" | "Letter";
