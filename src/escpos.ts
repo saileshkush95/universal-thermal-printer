@@ -78,7 +78,7 @@ export function buildEscPos(sections: PrintSection[]): Uint8Array {
 
       case "Line": {
         const ch = (section.value || "=").charCodeAt(0);
-        parts.push(new Uint8Array(Array(40).fill(ch)));
+        parts.push(new Uint8Array(Array(48).fill(ch)));
         parts.push(new Uint8Array([0x0a]));
         break;
       }
