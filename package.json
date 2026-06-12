@@ -1,6 +1,6 @@
 {
   "name": "universal-thermal-printer",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "type": "module",
   "description": "Print to thermal (ESC/POS) and A4 (PDF) printers via TCP, Bluetooth, USB, or system spooler — works in Node.js, Bun, Electron, and Expo",
   "license": "MIT",
