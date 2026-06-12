@@ -177,6 +177,14 @@ export function buildEscPos(sections: PrintSection[]): Uint8Array {
         }
 
         const totalWidth = colWidths.reduce((a: number, b: number) => a + b + gap, 0) - gap;
+        const maxWidth = 48;
+        if (totalWidth > maxWidth) {
+          const availGap = (colWidths.length - 1) * gap;
+          const scale = (maxWidth - availGap) / (totalWidth - availGap);
+          for (let c = 0; c < colCount; c++) {
+            colWidths[c] = Math.max(Math.floor(colWidths[c] * scale), 2);
+          }
+        }
 
         function renderRow(cells: string[], isHeader: boolean): void {
           if (borderAll && sep) {
