@@ -94,16 +94,49 @@ export async function printViaUsb(
   }
 
   const mod = getNativeModule();
-  const hasPermission = await mod.requestPermission(vendorId, productId);
-  if (!hasPermission) {
-    throw new Error("USB permission denied");
-  }
 
-  await mod.connect(vendorId, productId);
-  try {
-    await mod.write(base64Encode(data));
-    return "Print job sent successfully";
-  } finally {
-    await mod.disconnect();
-  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        reject(`USB operation timed out for device ${vendorId}:${productId}`);
+      }
+    }, 10000);
+
+    (async () => {
+      try {
+        const hasPermission = await mod.requestPermission(vendorId, productId);
+        if (settled) return;
+        if (!hasPermission) {
+          settled = true;
+          clearTimeout(timer);
+          reject("USB permission denied");
+          return;
+        }
+
+        await mod.connect(vendorId, productId);
+        if (settled) return;
+
+        try {
+          await mod.write(base64Encode(data));
+          if (!settled) {
+            settled = true;
+            clearTimeout(timer);
+            resolve("Print job sent successfully");
+          }
+        } finally {
+          if (!settled) {
+            await mod.disconnect();
+          }
+        }
+      } catch (err) {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          reject(err instanceof Error ? err.message : String(err));
+        }
+      }
+    })();
+  });
 }

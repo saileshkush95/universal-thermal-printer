@@ -57,26 +57,48 @@ export async function printViaBluetooth(
   }
 
   return new Promise((resolve, reject) => {
+    let settled = false;
     const bt = new mod.default();
+    const timeout = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        try { bt.close(); } catch {}
+        reject(`Bluetooth operation timed out for ${address}`);
+      }
+    }, 10000);
+
     bt.findSerialPortChannel(address, (chanErr: any, channel: number) => {
+      if (settled) return;
       if (chanErr) {
+        settled = true;
+        clearTimeout(timeout);
         reject(`Bluetooth find channel failed: ${chanErr.message || chanErr}`);
         return;
       }
       bt.connect(address, channel, (connErr: any) => {
+        if (settled) return;
         if (connErr) {
+          settled = true;
+          clearTimeout(timeout);
           reject(`Bluetooth connect failed: ${connErr.message || connErr}`);
           return;
         }
         bt.write(Buffer.from(data), (writeErr: any) => {
+          if (settled) return;
           if (writeErr) {
+            settled = true;
+            clearTimeout(timeout);
             bt.close();
             reject(`Bluetooth write failed: ${writeErr.message || writeErr}`);
             return;
           }
           setTimeout(() => {
-            bt.close();
-            resolve("Print job sent successfully");
+            if (!settled) {
+              settled = true;
+              clearTimeout(timeout);
+              bt.close();
+              resolve("Print job sent successfully");
+            }
           }, 500);
         });
       });

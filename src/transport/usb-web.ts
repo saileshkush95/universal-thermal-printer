@@ -244,11 +244,37 @@ export async function printViaUsb(
     (ep) => ep.direction === "out"
   )!;
   const maxPacketSize = endpoint.packetSize || 64;
-  let offset = 0;
-  while (offset < data.length) {
-    const chunk = data.slice(offset, offset + maxPacketSize);
-    await device.transferOut(endpoint.endpointNumber, chunk);
-    offset += chunk.length;
-  }
-  return "Print job sent successfully via WebUSB";
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        reject(`WebUSB operation timed out for device ${deviceId}`);
+      }
+    }, 10000);
+
+    (async () => {
+      try {
+        let offset = 0;
+        while (offset < data.length) {
+          if (settled) return;
+          const chunk = data.slice(offset, offset + maxPacketSize);
+          await device.transferOut(endpoint.endpointNumber, chunk);
+          offset += chunk.length;
+        }
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          resolve("Print job sent successfully via WebUSB");
+        }
+      } catch (err) {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          reject(err instanceof Error ? err.message : String(err));
+        }
+      }
+    })();
+  });
 }

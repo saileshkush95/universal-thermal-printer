@@ -101,10 +101,37 @@ async function writeData(port: SerialPort, data: Uint8Array): Promise<void> {
 
 export async function printViaSerial(deviceId: string, data: Uint8Array): Promise<string> {
   const port = await resolvePort(deviceId);
-  await openPort(port, 19200);
-  await writeData(port, data);
-  await port.close();
-  return "Print job sent successfully via Web Serial";
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        reject(`Web Serial operation timed out for device ${deviceId}`);
+      }
+    }, 10000);
+
+    (async () => {
+      try {
+        await openPort(port, 19200);
+        if (settled) return;
+        await writeData(port, data);
+        if (settled) return;
+        await port.close();
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          resolve("Print job sent successfully via Web Serial");
+        }
+      } catch (err) {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          reject(err instanceof Error ? err.message : String(err));
+        }
+      }
+    })();
+  });
 }
 
 // ─── Customer Display ──────────────────────────────────────────────

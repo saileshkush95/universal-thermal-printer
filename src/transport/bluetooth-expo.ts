@@ -57,19 +57,47 @@ export async function printViaBluetooth(
   const { BleManager } = await import("react-native-ble-plx");
   const manager = new BleManager();
 
-  const device = await manager.connectToDevice(address);
-  await device.discoverAllServicesAndCharacteristics();
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        reject(`Bluetooth operation timed out for ${address}`);
+      }
+    }, 10000);
 
-  const chunks = chunk(data, 512);
-  for (const c of chunks) {
-    const base64 = toBase64(c);
-    await device.writeCharacteristicWithoutResponseForService(
-      UART_SERVICE_UUID,
-      UART_TX_CHAR_UUID,
-      base64
-    );
-  }
+    (async () => {
+      try {
+        const device = await manager.connectToDevice(address);
+        if (settled) return;
+        await device.discoverAllServicesAndCharacteristics();
+        if (settled) return;
 
-  await manager.cancelDeviceConnection(address);
-  return "Print job sent successfully";
+        const chunks = chunk(data, 512);
+        for (const c of chunks) {
+          if (settled) return;
+          const base64 = toBase64(c);
+          await device.writeCharacteristicWithoutResponseForService(
+            UART_SERVICE_UUID,
+            UART_TX_CHAR_UUID,
+            base64
+          );
+        }
+
+        if (settled) return;
+        await manager.cancelDeviceConnection(address);
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          resolve("Print job sent successfully");
+        }
+      } catch (err) {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          reject(err instanceof Error ? err.message : String(err));
+        }
+      }
+    })();
+  });
 }
